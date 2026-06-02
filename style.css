@@ -1,0 +1,495 @@
+:root {
+    /* Color Palette - Premium Dark Mode */
+    --bg-primary: #0f172a;
+    --bg-secondary: #1e293b;
+    --bg-panel: rgba(30, 41, 59, 0.7);
+    --text-primary: #f8fafc;
+    --text-secondary: #94a3b8;
+    --text-muted: #64748b;
+    
+    --accent-primary: #38bdf8;
+    --accent-hover: #0ea5e9;
+    --accent-ground: #10b981; /* Green for ground stations */
+    --accent-aircraft: #f59e0b; /* Amber/Orange for aircraft */
+    
+    --border-color: rgba(255, 255, 255, 0.1);
+    
+    /* Typography */
+    --font-main: 'Inter', system-ui, -apple-system, sans-serif;
+    --font-mono: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace;
+    
+    /* Layout */
+    --header-height: 70px;
+    --panel-gap: 1.5rem;
+    --radius-lg: 16px;
+    --radius-md: 8px;
+    
+    /* Effects */
+    --shadow-glass: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+    --backdrop-blur: blur(12px);
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: var(--font-main);
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow-x: hidden;
+}
+
+/* Header */
+.app-header {
+    height: var(--header-height);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 0 2rem;
+    background: rgba(15, 23, 42, 0.8);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--border-color);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+}
+
+.app-header h1 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    color: var(--accent-primary);
+}
+
+.app-header p {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    margin-top: 0.2rem;
+}
+
+/* Main Layout */
+.app-container {
+    display: flex;
+    flex: 1;
+    gap: var(--panel-gap);
+    padding: var(--panel-gap);
+    height: calc(100vh - var(--header-height));
+}
+
+@media (max-width: 1024px) {
+    .app-container {
+        flex-direction: column;
+        height: auto;
+    }
+}
+
+/* Panels */
+.panel {
+    background: var(--bg-panel);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    backdrop-filter: var(--backdrop-blur);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+.input-panel {
+    flex: 1;
+    min-width: 350px;
+}
+
+.output-panel {
+    flex: 2;
+    position: relative;
+}
+
+.panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid var(--border-color);
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.panel-header h2 {
+    font-size: 1rem;
+    font-weight: 500;
+    color: var(--text-primary);
+}
+
+/* Button */
+.primary-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background-color: var(--accent-primary);
+    color: #000;
+    border: none;
+    padding: 0.6rem 1.2rem;
+    border-radius: var(--radius-md);
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.primary-btn:hover {
+    background-color: var(--accent-hover);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(56, 189, 248, 0.3);
+}
+
+.primary-btn:active {
+    transform: translateY(1px);
+}
+
+.secondary-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    background-color: transparent;
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
+    padding: 0.4rem 0.8rem;
+    border-radius: var(--radius-md);
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.secondary-btn:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+    border-color: var(--text-secondary);
+}
+
+/* Textarea */
+textarea#log-input {
+    flex: 1;
+    width: 100%;
+    resize: none;
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    font-family: var(--font-mono);
+    font-size: 0.85rem;
+    line-height: 1.5;
+    padding: 1.5rem;
+    outline: none;
+}
+
+textarea#log-input:focus {
+    color: var(--text-primary);
+}
+
+/* Legend */
+.legend {
+    display: flex;
+    gap: 1rem;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.legend-color {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+}
+
+.legend-color.ground {
+    background-color: var(--accent-ground);
+    box-shadow: 0 0 8px var(--accent-ground);
+}
+
+.legend-color.aircraft {
+    background-color: var(--accent-aircraft);
+    box-shadow: 0 0 8px var(--accent-aircraft);
+}
+
+/* Filter Buttons */
+#filter-container {
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid var(--border-color);
+    background: rgba(255, 255, 255, 0.01);
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+#filter-container.hidden {
+    display: none;
+}
+.filter-label {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+#entity-filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+.filter-btn {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    padding: 0.4rem 0.8rem;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+.filter-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+.filter-btn.active {
+    background: var(--accent-primary);
+    color: #000;
+    border-color: var(--accent-primary);
+    font-weight: 600;
+}
+.filter-btn.ground::before {
+    content: '';
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--accent-ground);
+}
+.filter-btn.aircraft::before {
+    content: '';
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--accent-aircraft);
+}
+.filter-btn.active::before {
+    box-shadow: 0 0 4px rgba(0,0,0,0.5);
+}
+
+/* Diagram Container */
+#diagram-container {
+    flex: 1;
+    overflow: auto;
+    position: relative;
+    padding: 2rem;
+    cursor: grab;
+}
+
+#diagram-container:active {
+    cursor: grabbing;
+}
+
+#diagram-empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    color: var(--text-muted);
+}
+
+/* SVG D3 Styles */
+svg {
+    font-family: var(--font-main);
+    display: block;
+    margin: 0 auto;
+}
+
+.lifeline-line {
+    stroke: var(--border-color);
+    stroke-width: 1.5px;
+    stroke-dasharray: 6 4;
+}
+
+.lifeline-rect {
+    fill: var(--bg-secondary);
+    stroke: var(--border-color);
+    stroke-width: 1px;
+    rx: 4px;
+}
+
+.lifeline-text {
+    fill: var(--text-primary);
+    font-size: 12px;
+    font-weight: 500;
+    text-anchor: middle;
+}
+
+.lifeline-subtext {
+    fill: var(--text-secondary);
+    font-size: 10px;
+    text-anchor: middle;
+}
+
+.message-group {
+    cursor: pointer;
+}
+
+.message-line {
+    stroke: var(--text-secondary);
+    stroke-width: 1.5px;
+    transition: all 0.2s ease;
+}
+
+.message-arrow {
+    fill: var(--text-secondary);
+    transition: all 0.2s ease;
+}
+
+/* Handoff Highlights */
+.handoff-line {
+    stroke: var(--accent-aircraft);
+    stroke-width: 2px;
+    stroke-dasharray: 4;
+}
+
+.handoff-arrow {
+    fill: var(--accent-aircraft);
+}
+
+.message-text {
+    fill: var(--text-secondary);
+    font-size: 11px;
+    text-anchor: middle;
+    transition: all 0.2s ease;
+}
+
+.message-group:hover .message-line {
+    stroke: var(--accent-primary);
+    stroke-width: 2px;
+}
+
+.message-group:hover .message-arrow {
+    fill: var(--accent-primary);
+}
+
+.message-group:hover .message-text {
+    fill: var(--text-primary);
+    font-weight: 600;
+}
+
+.message-time {
+    fill: var(--text-muted);
+    font-size: 10px;
+    font-family: var(--font-mono);
+}
+
+/* Tooltip (Glassmorphism) */
+.tooltip {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(15, 23, 42, 0.85);
+    backdrop-filter: var(--backdrop-blur);
+    -webkit-backdrop-filter: var(--backdrop-blur);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-glass);
+    width: 400px;
+    max-width: 90vw;
+    z-index: 1000;
+    opacity: 1;
+    transition: opacity 0.3s ease, transform 0.3s ease;
+    display: flex;
+    flex-direction: column;
+}
+
+.tooltip.hidden {
+    opacity: 0;
+    pointer-events: none;
+    transform: translate(-50%, -45%);
+}
+
+.tooltip-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.8rem 1rem;
+    border-bottom: 1px solid var(--border-color);
+    background: rgba(255, 255, 255, 0.03);
+    font-family: var(--font-mono);
+    font-size: 0.85rem;
+    color: var(--accent-primary);
+}
+
+#close-tooltip {
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    font-size: 1.5rem;
+    cursor: pointer;
+    line-height: 1;
+}
+
+#close-tooltip:hover {
+    color: var(--text-primary);
+}
+
+.tooltip-entities {
+    padding: 1rem 1rem 0.5rem;
+    font-weight: 600;
+    font-size: 0.95rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.tooltip-meta {
+    padding: 0 1rem 1rem;
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    border-bottom: 1px solid var(--border-color);
+}
+
+.tooltip-body {
+    padding: 1rem;
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.tooltip-body pre {
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+    color: var(--text-primary);
+    white-space: pre-wrap;
+    line-height: 1.4;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.1);
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--bg-secondary);
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--text-muted);
+}
