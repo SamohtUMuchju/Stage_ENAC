@@ -1,3 +1,7 @@
+// Variables globales pour stocker l'état
+let allParsedMessages = [];
+let currentActiveEntityId = null;
+
 document.addEventListener('DOMContentLoaded', () => {
     // Récupération des éléments principaux de l'interface utilisateur
     const analyzeBtn = document.getElementById('analyze-btn');
@@ -8,12 +12,103 @@ document.addEventListener('DOMContentLoaded', () => {
     // Fixation du tooltip pour qu'il agisse comme une fenêtre modale centrée sur l'écran
     tooltip.style.position = 'fixed';
 
+    // --- Ajout Logique Onglets (Tabs) ---
+    const tabBtns = document.querySelectorAll('.tab-btn');
+    const tabContents = document.querySelectorAll('.app-container');
+
+    tabBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            // Désactiver tous les onglets
+            tabBtns.forEach(b => b.classList.remove('active'));
+            tabContents.forEach(c => c.classList.add('hidden'));
+
+            // Activer l'onglet cliqué
+            btn.classList.add('active');
+            const targetId = btn.getAttribute('data-tab');
+            document.getElementById(targetId).classList.remove('hidden');
+        });
+    });
+
+    // --- Logique Pédagogique Granulaire (Anatomie d'une Trame) ---
+    const anatomyExplanations = {
+        'radio_power': "<strong>[Couche Physique / SDR] Puissance</strong><br><br>Puissance du signal reçu / Plancher de bruit de fond (dBFS).",
+        'radio_snr': "<strong>[Couche Physique / SDR] SNR</strong><br><br>SNR (Signal to Noise Ratio). Ratio critique pour la qualité du signal. Sous un certain seuil, le FEC (Forward Error Correction) ne peut plus compenser et la trame est perdue.",
+        'radio_drift': "<strong>[Couche Physique / SDR] Dérive</strong><br><br>Dérive de l'oscillateur. Mesure le décalage de fréquence de l'horloge de l'émetteur.",
+        'avlc_type_i': "<strong>[AVLC] Trame d'Information</strong><br><br>Transfère de la donnée utile.",
+        'avlc_type_s_u': "<strong>[AVLC] Trame de Contrôle</strong><br><br>Trame Supervisory (ex: accusé de réception pur) ou Unnumbered (ex: XID pour négociation de connexion).",
+        'avlc_sseq': "<strong>[AVLC] Send Sequence</strong><br><br>Numéro de la trame courante envoyée (Modulo 8).",
+        'avlc_rseq': "<strong>[AVLC] Receive Sequence</strong><br><br>Le numéro de la prochaine trame attendue. Sert d'acquittement implicite pour toutes les trames précédentes.",
+        'avlc_poll': "<strong>[AVLC] Bit P/F (Poll/Final)</strong><br><br>S'il est à 1, l'émetteur exige une réponse immédiate de la station réceptrice.",
+        'x25_lci': "<strong>[X.25] LCI (Logical Channel Identifier)</strong><br><br>C'est le numéro de \"tuyau\" (grp et chan). Il identifie de manière unique le circuit virtuel X.25 ouvert entre l'avion et le sol.",
+        'x25_more': "<strong>[X.25] Bit M (More Data)</strong><br><br>S'il est à 1, cela signifie que la charge utile était trop grosse pour la MTU radio et a été fragmentée. La suite arrive dans le prochain paquet.",
+        'app_lref': "<strong>[SNDCF] Local Reference</strong><br><br>Pour économiser de la bande passante VHF, les longues adresses OACI réseau (NSAP) sont remplacées par ce petit identifiant local après la négociation initiale.",
+        'app_lifetime': "<strong>[CLNP] Lifetime</strong><br><br>L'équivalent du TTL (Time To Live). Durée de vie restante du paquet en secondes avant qu'un routeur de l'ATN ne le détruise.",
+        'app_dst_ref': "<strong>[COTP X.224] Destination Reference</strong><br><br>Identifiant unique de la connexion de transport de bout en bout (Couche 4).",
+        'app_credit': "<strong>[IDRP / COTP] Credit</strong><br><br>Mécanisme de contrôle de flux. Indique la taille de la fenêtre d'anticipation, soit le nombre de paquets que ce routeur a encore l'espace mémoire d'accepter."
+    };
+
+    const rawLogContainer = document.getElementById('anatomy-raw-log');
+    if (rawLogContainer) {
+        let rawText = rawLogContainer.innerHTML;
+        
+        // Expressions régulières pour injecter les spans avec classe et data-key
+        const patterns = [
+            { regex: /(\[-\d+\.\d+\/-\d+\.\d+ dBFS\])/g, key: 'radio_power' },
+            { regex: /(\[-?\d+\.\d+ dB\])/g, key: 'radio_snr' },
+            { regex: /(\[-?\d+\.\d+ ppm\])/g, key: 'radio_drift' },
+            { regex: /(type: I)/g, key: 'avlc_type_i' },
+            { regex: /(type: [SU])/g, key: 'avlc_type_s_u' },
+            { regex: /(sseq: \d+)/g, key: 'avlc_sseq' },
+            { regex: /(rseq: \d+)/g, key: 'avlc_rseq' },
+            { regex: /(poll: \d+|P\/F: \d+)/g, key: 'avlc_poll' },
+            { regex: /(grp: \d+ chan: \d+)/g, key: 'x25_lci' },
+            { regex: /(more: \d+)/g, key: 'x25_more' },
+            { regex: /(LRef: [^\s]+)/g, key: 'app_lref' },
+            { regex: /(Lifetime: \d+\.\d+ sec)/g, key: 'app_lifetime' },
+            { regex: /(dst_ref: [^\s]+)/g, key: 'app_dst_ref' },
+            { regex: /(credit: \d+|credit_avail: \d+)/g, key: 'app_credit' }
+        ];
+
+        patterns.forEach(p => {
+            rawText = rawText.replace(p.regex, `<span class="anatomy-term" data-key="${p.key}">$1</span>`);
+        });
+
+        rawLogContainer.innerHTML = rawText;
+        const explanationBox = document.getElementById('anatomy-explanation');
+
+        document.querySelectorAll('.anatomy-term').forEach(term => {
+            const showExplanation = () => {
+                document.querySelectorAll('.anatomy-term').forEach(t => t.classList.remove('active'));
+                term.classList.add('active');
+                const key = term.getAttribute('data-key');
+                if (anatomyExplanations[key]) {
+                    explanationBox.innerHTML = `<p>${anatomyExplanations[key]}</p>`;
+                }
+            };
+            
+            term.addEventListener('mouseenter', showExplanation);
+            term.addEventListener('click', showExplanation);
+        });
+    }
+
     // Ajout de l'événement pour télécharger le diagramme en JPG
     const downloadBtn = document.getElementById('download-btn');
     downloadBtn.addEventListener('click', downloadJPG);
 
-    // Tableau global qui stockera tous les messages analysés à partir des logs bruts
-    let allParsedMessages = [];
+    // --- Logique de filtrage par protocoles ---
+    const protocolCheckboxes = document.querySelectorAll('.protocol-cb input');
+    protocolCheckboxes.forEach(cb => {
+        cb.addEventListener('change', () => {
+            if (currentActiveEntityId && allParsedMessages.length > 0) {
+                const activeProtocols = Array.from(document.querySelectorAll('.protocol-cb input:checked')).map(c => c.value);
+                const filtered = allParsedMessages.filter(m => 
+                    (m.srcId === currentActiveEntityId || m.destId === currentActiveEntityId) && 
+                    activeProtocols.includes(m.protocolType)
+                );
+                drawDiagram(filtered);
+            }
+        });
+    });
 
     // --- Logique du "Drag-to-Scroll" (Glisser pour faire défiler) ---
     const diagramContainer = document.getElementById('diagram-container');
@@ -87,29 +182,47 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
-// ---------------------------------------------------------------------
+// =====================================================================
 // parseLogs: Fonction clé pour extraire les données depuis le texte brut
-// ---------------------------------------------------------------------
+// Inclut une machine d'état AVLC (détection retransmissions / pertes)
+// et un gestionnaire de sessions X.25 (circuits virtuels).
+// =====================================================================
 function parseLogs(rawText) {
     const messages = [];
-    // Découpage du texte à chaque apparition du motif de date (ex: [2026-02-02 13:53:41 CET])
+    // Découpage du texte à chaque apparition du motif de date
     const blocks = rawText.split(/(?=\[\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2} [A-Z]+\])/g);
 
-    // Map servant à mémoriser la dernière Station Sol (GS) utilisée par chaque avion (pour détecter les transferts/handoffs)
+    // --- Machine d'état pour la détection de Handoff ---
     const aircraftCurrentGS = new Map();
+
+    // --- Machine d'état AVLC : suivi des compteurs sseq par flux directionnel ---
+    // Clé : "srcId->destId", Valeur : { lastSseq: Number }
+    // Permet de détecter les retransmissions (même sseq) et les pertes (saut de sseq)
+    const avlcStates = new Map();
+
+    // --- Gestionnaire de Sessions X.25 (Circuits Virtuels) ---
+    // Clé : "srcId|destId|grp|chan" (normalisée), Valeur : sessionId
+    // Un circuit X.25 est identifié par la combinaison grp + chan entre deux entités
+    const activeX25Sessions = new Map();
+    let sessionCounter = 0; // Compteur global d'identifiants de sessions
+
+    // Fonction utilitaire : crée une clé de session normalisée (ordre alphabétique)
+    // pour que A->B et B->A partagent le même circuit
+    function makeSessionKey(idA, idB, grp, chan) {
+        const sorted = [idA, idB].sort();
+        return `${sorted[0]}|${sorted[1]}|${grp}|${chan}`;
+    }
 
     blocks.forEach(block => {
         const lines = block.trim().split('\n');
-        if (lines.length < 2) return; // Si le bloc n'a pas au moins l'en-tête et les entités, on l'ignore
+        if (lines.length < 2) return;
 
-        const metaLine = lines[0]; // Exemple: [2026-02-02 13:53:41 CET] [136.875] [-27.6/-15.0 dBFS] [-12.6 dB] [-0.4 ppm]
-        const entityLine = lines[1]; // Exemple: 2A3261 (Ground station, On ground) -> 4D2101 (Aircraft): Command
+        const metaLine = lines[0];
+        const entityLine = lines[1];
 
-        // Expressions régulières pour extraire les informations spécifiques des crochets
         const metaRegex = /^\[(.*?)\] \[(.*?)\] \[.*?\] \[(.*?)\]/;
         const metaMatch = metaLine.match(metaRegex);
 
-        // Extraction de la source et de la destination avec leurs descriptions
         const entityRegex = /^(.*?) \((.*?)\) -> (.*?) \((.*?)\):/;
         const entityMatch = entityLine.match(entityRegex);
 
@@ -119,35 +232,148 @@ function parseLogs(rawText) {
             const destId = entityMatch[3].trim();
             const destDesc = entityMatch[4].trim();
 
-            // Reconstitution du reste du message (la charge utile / payload)
             const payloadLines = lines.slice(2);
             const payload = payloadLines.join('\n');
 
-            // --- Génération intelligente du résumé ---
-            // Parcourt le payload pour trouver des mots-clés et créer un petit titre pour la flèche
-            let summary = "Message";
-            if (payload.includes("IDRP Keepalive")) {
-                summary = "IDRP Keepalive";
-            } else if (payload.includes("Receive Ready")) {
-                summary = "X.25 Receive Ready";
-            } else if (payload.includes("X.224 COTP Data Ack")) {
-                summary = "COTP Data Ack";
-            } else if (payload.includes("X.25 Data")) {
-                summary = "X.25 Data";
-            } else if (payload.includes("XID:")) {
-                summary = "XID (Ground Info)";
-            } else if (payload.includes("ACARS:")) {
-                summary = "ACARS Data";
-            } else {
-                const avlcMatch = payload.match(/AVLC type: ([^\s(]+)/);
-                if (avlcMatch) summary = "AVLC " + avlcMatch[1];
+            // --- Extraction Structurée des Couches (Layers) ---
+            let layers = {};
+            let protocolType = "UNKNOWN";
+
+            payloadLines.forEach(line => {
+                // Extraction AVLC
+                if (line.includes("AVLC type:")) {
+                    layers.avlc = {};
+                    const typeMatch = line.match(/AVLC type: ([A-Z])/);
+                    if (typeMatch) layers.avlc.type = typeMatch[1];
+
+                    const sseqMatch = line.match(/sseq: (\d+)/);
+                    if (sseqMatch) layers.avlc.sseq = parseInt(sseqMatch[1], 10);
+
+                    const rseqMatch = line.match(/rseq: (\d+)/);
+                    if (rseqMatch) layers.avlc.rseq = parseInt(rseqMatch[1], 10);
+
+                    const pollMatch = line.match(/(?:poll|P\/F): (\d+)/);
+                    if (pollMatch) layers.avlc.poll = parseInt(pollMatch[1], 10);
+                }
+                // Extraction X.25 (enrichie avec grp, chan et événements de session)
+                else if (line.includes("X.25")) {
+                    if (!layers.x25) layers.x25 = {};
+
+                    // Type de paquet X.25
+                    if (line.includes("X.25 Data")) layers.x25.type = "Data";
+                    else if (line.includes("X.25 Receive Ready")) layers.x25.type = "RR";
+                    else if (line.includes("X.25 Call Request")) layers.x25.type = "CallRequest";
+                    else if (line.includes("X.25 Call Accepted")) layers.x25.type = "CallAccepted";
+                    else if (line.includes("X.25 Clear Request")) layers.x25.type = "ClearRequest";
+
+                    // Extraction grp et chan
+                    const grpMatch = line.match(/grp: (\d+)/);
+                    if (grpMatch) layers.x25.grp = parseInt(grpMatch[1], 10);
+
+                    const chanMatch = line.match(/chan: (\d+)/);
+                    if (chanMatch) layers.x25.chan = parseInt(chanMatch[1], 10);
+
+                    const sseqMatch = line.match(/sseq: (\d+)/);
+                    if (sseqMatch) layers.x25.sseq = parseInt(sseqMatch[1], 10);
+
+                    const rseqMatch = line.match(/rseq: (\d+)/);
+                    if (rseqMatch) layers.x25.rseq = parseInt(rseqMatch[1], 10);
+                }
+                // Protocoles supérieurs
+                else if (line.includes("IDRP Keepalive")) {
+                    protocolType = "IDRP";
+                }
+                else if (line.includes("ACARS:") || line.includes("CPDLC:")) {
+                    protocolType = "ACARS/CPDLC";
+                }
+                // Détection COTP Disconnect (fermeture de session couche transport)
+                else if (line.includes("COTP Disconnect")) {
+                    if (!layers.x25) layers.x25 = {};
+                    layers.x25.cotpDisconnect = true;
+                }
+            });
+
+            // Déduction du protocole dominant
+            if (protocolType === "UNKNOWN") {
+                if (layers.x25 && (layers.x25.type === "Data" || layers.x25.type === "RR")) protocolType = "X.25";
+                else if (layers.x25) protocolType = "X.25";
+                else protocolType = "AVLC";
             }
 
-            // --- Logique de détection de Handoff (Changement de relais) ---
+            // --- Machine d'état AVLC : détection retransmission / perte ---
+            let isRetransmission = false;
+            let isPacketLoss = false;
+
+            if (layers.avlc && layers.avlc.type === 'I' && layers.avlc.sseq !== undefined) {
+                const flowKey = srcId + "->" + destId;
+                const prevState = avlcStates.get(flowKey);
+
+                if (prevState !== undefined) {
+                    if (layers.avlc.sseq === prevState) {
+                        // Même sseq que le précédent → retransmission détectée
+                        isRetransmission = true;
+                    } else {
+                        const expectedSseq = (prevState + 1) % 8;
+                        if (layers.avlc.sseq !== expectedSseq) {
+                            // Saut de numéro de séquence → perte de paquet
+                            isPacketLoss = true;
+                        }
+                    }
+                }
+                // Mise à jour de l'état (sauf si retransmission : on garde le même sseq attendu)
+                if (!isRetransmission) {
+                    avlcStates.set(flowKey, layers.avlc.sseq);
+                }
+            }
+
+            // --- Gestionnaire de Sessions X.25 ---
+            let sessionId = null;
+
+            if (layers.x25 && layers.x25.grp !== undefined && layers.x25.chan !== undefined) {
+                const sessKey = makeSessionKey(srcId, destId, layers.x25.grp, layers.x25.chan);
+
+                // Ouverture de session : Call Request ou Call Accepted
+                if (layers.x25.type === "CallRequest" || layers.x25.type === "CallAccepted") {
+                    if (!activeX25Sessions.has(sessKey)) {
+                        sessionCounter++;
+                        activeX25Sessions.set(sessKey, `SES-${sessionCounter}`);
+                    }
+                    sessionId = activeX25Sessions.get(sessKey);
+                }
+                // Fermeture de session : Clear Request ou COTP Disconnect
+                else if (layers.x25.type === "ClearRequest" || layers.x25.cotpDisconnect) {
+                    sessionId = activeX25Sessions.get(sessKey) || null;
+                    activeX25Sessions.delete(sessKey);
+                }
+                // Paquet de données ou RR dans une session active
+                else if (activeX25Sessions.has(sessKey)) {
+                    sessionId = activeX25Sessions.get(sessKey);
+                }
+            }
+
+            // --- Génération intelligente du résumé ---
+            let summary = "Message";
+            if (layers.x25 && layers.x25.type === "CallRequest") summary = "X.25 Call Request 📞";
+            else if (layers.x25 && layers.x25.type === "CallAccepted") summary = "X.25 Call Accepted ✅";
+            else if (layers.x25 && layers.x25.type === "ClearRequest") summary = "X.25 Clear Request ❌";
+            else if (layers.x25 && layers.x25.cotpDisconnect) summary = "COTP Disconnect ❌";
+            else if (protocolType === "IDRP") summary = "IDRP Keepalive";
+            else if (protocolType === "ACARS/CPDLC") summary = "ACARS/CPDLC Data";
+            else if (protocolType === "X.25") summary = layers.x25.type === "RR" ? "X.25 Receive Ready" : "X.25 Data";
+            else if (layers.avlc) {
+                if (layers.avlc.type === "S") summary = "AVLC Supervisory";
+                else if (layers.avlc.type === "U") summary = "AVLC Unnumbered (XID)";
+                else summary = "AVLC Info";
+            }
+
+            // Préfixes visuels pour les anomalies détectées
+            if (isRetransmission) summary = "🔁 RETX | " + summary;
+            if (isPacketLoss) summary = "⚠️ PERTE | " + summary;
+
+            // --- Détection de Handoff ---
             let isHandoff = false;
             let handoffFrom = null;
 
-            // Détermine si les entités en communication sont des avions ou des stations sols
             const isSrcAc = srcDesc.toLowerCase().includes("aircraft");
             const isDestAc = destDesc.toLowerCase().includes("aircraft");
             const isSrcGs = srcDesc.toLowerCase().includes("ground");
@@ -156,46 +382,42 @@ function parseLogs(rawText) {
             let acId = null;
             let gsId = null;
 
-            // Identification des acteurs principaux dans ce message (en ignorant les adresses broadcast FFFFFF)
             if (isSrcAc && isDestGs && destId !== 'FFFFFF') {
-                acId = srcId;
-                gsId = destId;
+                acId = srcId; gsId = destId;
             } else if (isDestAc && isSrcGs && srcId !== 'FFFFFF') {
-                acId = destId;
-                gsId = srcId;
+                acId = destId; gsId = srcId;
             }
 
-            // Si c'est bien une communication entre un avion et une station
             if (acId && acId !== 'FFFFFF') {
                 const prevGS = aircraftCurrentGS.get(acId);
-                // Si l'avion parlait à une station A et parle maintenant à une station B, c'est un handoff !
                 if (prevGS && prevGS !== gsId && gsId !== null) {
                     isHandoff = true;
                     handoffFrom = prevGS;
                 }
-                // Mise à jour de la mémoire pour cet avion
-                if (gsId) {
-                    aircraftCurrentGS.set(acId, gsId);
-                }
+                if (gsId) aircraftCurrentGS.set(acId, gsId);
             }
 
-            // Si c'est un handoff, on modifie le titre affiché sur le graphe
             if (isHandoff) {
                 summary = `🔄 Handoff (${handoffFrom} \u2192 ${gsId}) | ` + summary;
             }
 
-            // Ajout du message propre et formatté au tableau final
+            // --- Objet message final ---
             messages.push({
                 time: metaMatch[1],
                 freq: metaMatch[2],
                 snr: metaMatch[3],
-                srcId: srcId,
-                srcDesc: srcDesc,
-                destId: destId,
-                destDesc: destDesc,
+                srcId,
+                srcDesc,
+                destId,
+                destDesc,
                 payload: payload.trim(),
-                summary: summary,
-                isHandoff: isHandoff
+                summary,
+                isHandoff,
+                isRetransmission,
+                isPacketLoss,
+                sessionId,
+                layers,
+                protocolType
             });
         }
     });
@@ -204,6 +426,8 @@ function parseLogs(rawText) {
 
 // ---------------------------------------------------------------------
 // setupFilters: Génère les boutons pour filtrer le graphe par entité
+// Exclut l'adresse broadcast FFFFFF, calcule la symétrie d'échange,
+// et propose un tri par volume ou qualité de liaison.
 // ---------------------------------------------------------------------
 function setupFilters(messages) {
     const filterContainer = document.getElementById('filter-container');
@@ -216,80 +440,140 @@ function setupFilters(messages) {
     }
 
     filterContainer.classList.remove('hidden');
-    entityFilters.innerHTML = ''; // Vide les anciens filtres
 
-    // Extraction des entités uniques depuis les messages
+    // --- Extraction des entités uniques (en excluant le broadcast FFFFFF) ---
     const entities = new Map();
     messages.forEach(m => {
-        if (!entities.has(m.srcId)) entities.set(m.srcId, m.srcDesc);
-        if (!entities.has(m.destId)) entities.set(m.destId, m.destDesc);
+        if (m.srcId !== 'FFFFFF' && !entities.has(m.srcId)) entities.set(m.srcId, m.srcDesc);
+        if (m.destId !== 'FFFFFF' && !entities.has(m.destId)) entities.set(m.destId, m.destDesc);
     });
 
-    // Tri des entités : les Stations Sols (Ground) apparaîtront en premier
-    const entityList = Array.from(entities.keys()).sort((a, b) => {
-        const descA = entities.get(a).toLowerCase();
-        const descB = entities.get(b).toLowerCase();
-        const isGroundA = descA.includes('ground');
-        const isGroundB = descB.includes('ground');
-        if (isGroundA && !isGroundB) return -1;
-        if (!isGroundA && isGroundB) return 1;
-        return a.localeCompare(b);
+    // --- Calcul des statistiques par entité (volume + symétrie) ---
+    const entityStats = new Map();
+    entities.forEach((desc, id) => {
+        // Nombre de messages envoyés par cette entité
+        const sent = messages.filter(m => m.srcId === id).length;
+        // Nombre de messages reçus par cette entité
+        const received = messages.filter(m => m.destId === id).length;
+        const total = sent + received;
+        // Ratio de symétrie : 1.0 = parfaitement équilibré, 0.0 = totalement unidirectionnel
+        // Formule : 1 - |sent - received| / total (normalisé entre 0 et 1)
+        const symmetryRatio = total > 0 ? 1 - Math.abs(sent - received) / total : 0;
+        entityStats.set(id, { sent, received, total, symmetryRatio });
     });
 
+    // --- Fonction de tri des entités selon le critère sélectionné ---
+    function sortEntities(criteria) {
+        const keys = Array.from(entities.keys());
+        if (criteria === 'volume') {
+            // Tri décroissant par nombre total de messages
+            return keys.sort((a, b) => (entityStats.get(b)?.total || 0) - (entityStats.get(a)?.total || 0));
+        } else if (criteria === 'symmetry') {
+            // Tri décroissant par ratio de symétrie (les plus symétriques en premier)
+            return keys.sort((a, b) => (entityStats.get(b)?.symmetryRatio || 0) - (entityStats.get(a)?.symmetryRatio || 0));
+        }
+        // Par défaut : Ground Stations en premier, puis tri alphabétique
+        return keys.sort((a, b) => {
+            const descA = entities.get(a).toLowerCase();
+            const descB = entities.get(b).toLowerCase();
+            const isGroundA = descA.includes('ground');
+            const isGroundB = descB.includes('ground');
+            if (isGroundA && !isGroundB) return -1;
+            if (!isGroundA && isGroundB) return 1;
+            return a.localeCompare(b);
+        });
+    }
+
+    // --- Rendu des boutons de filtre ---
     let currentActiveBtn = null;
 
-    // Création d'un bouton pour chaque entité trouvée
-    entityList.forEach(id => {
-        const desc = entities.get(id);
-        const isGround = desc.toLowerCase().includes('ground');
+    function renderFilterButtons(sortCriteria) {
+        entityFilters.innerHTML = ''; // Vide les anciens boutons
+        const entityList = sortEntities(sortCriteria);
 
-        const btn = document.createElement('button');
-        // Applique une classe CSS différente selon si c'est un avion ou une station
-        btn.className = `filter-btn ${isGround ? 'ground' : 'aircraft'}`;
-        btn.textContent = id;
-        btn.title = desc; // Infobulle native au survol
+        entityList.forEach(id => {
+            const desc = entities.get(id);
+            const isGround = desc.toLowerCase().includes('ground');
+            const stats = entityStats.get(id);
 
-        // Événement au clic sur le bouton de filtre
-        btn.addEventListener('click', () => {
-            // Gestion de la classe CSS "active" pour mettre le bouton en surbrillance
-            if (currentActiveBtn) currentActiveBtn.classList.remove('active');
-            btn.classList.add('active');
-            currentActiveBtn = btn;
+            const btn = document.createElement('button');
+            btn.className = `filter-btn ${isGround ? 'ground' : 'aircraft'}`;
+            // Si le bouton correspond à l'entité active, on le réactive visuellement
+            if (id === currentActiveEntityId) {
+                btn.classList.add('active');
+                currentActiveBtn = btn;
+            }
 
-            // Filtre les messages pour ne garder que ceux où cette entité est impliquée
-            const filteredMsgs = messages.filter(m => m.srcId === id || m.destId === id);
-            // Redessine le graphe avec ces données filtrées
-            drawDiagram(filteredMsgs);
+            // Texte principal du bouton
+            btn.textContent = id;
+            btn.title = `${desc}\n📤 Envoyés: ${stats.sent} | 📥 Reçus: ${stats.received}\nSymétrie: ${(stats.symmetryRatio * 100).toFixed(0)}%`;
+
+            // --- Badge de symétrie ---
+            if (!isGround && stats.total > 0) {
+                const badge = document.createElement('span');
+                badge.className = 'symmetry-badge';
+                if (stats.symmetryRatio >= 0.6) badge.classList.add('good');
+                else if (stats.symmetryRatio >= 0.2) badge.classList.add('medium');
+                else badge.classList.add('bad');
+                btn.appendChild(badge);
+            }
+
+            // Événement au clic sur le bouton de filtre d'entité
+            btn.addEventListener('click', () => {
+                if (currentActiveBtn) currentActiveBtn.classList.remove('active');
+                btn.classList.add('active');
+                currentActiveBtn = btn;
+
+                // Mémorisation de l'entité active pour le filtre des checkboxes
+                currentActiveEntityId = id;
+
+                // Filtre les messages en croisant : l'entité ET les protocoles cochés
+                const activeProtocols = Array.from(document.querySelectorAll('.protocol-cb input:checked')).map(c => c.value);
+                const filteredMsgs = messages.filter(m =>
+                    (m.srcId === id || m.destId === id) &&
+                    activeProtocols.includes(m.protocolType)
+                );
+
+                // Redessine le graphe avec ces données filtrées
+                drawDiagram(filteredMsgs);
+            });
+
+            entityFilters.appendChild(btn);
         });
+    }
 
-        entityFilters.appendChild(btn);
-    });
+    // Rendu initial avec le critère de tri courant du select
+    const sortSelect = document.getElementById('sort-select');
+    renderFilterButtons(sortSelect.value);
+
+    // Quand l'utilisateur change le tri, on reconstruit les boutons
+    sortSelect.onchange = () => renderFilterButtons(sortSelect.value);
 }
 
-// ---------------------------------------------------------------------
+// =====================================================================
 // drawDiagram: Génère le diagramme de séquence SVG en utilisant D3.js
-// ---------------------------------------------------------------------
+// Utilise les flags isRetransmission / isPacketLoss du parseur.
+// Regroupe visuellement les messages par session X.25.
+// =====================================================================
 function drawDiagram(messages) {
     const container = d3.select("#diagram-container");
-    container.selectAll("*").remove(); // Supprime l'ancien diagramme
+    container.selectAll("*").remove();
 
-    // Si le tableau est vide, affiche un message d'erreur
     if (messages.length === 0) {
         container.html(`<div id="diagram-empty-state">
             <svg viewBox="0 0 24 24" width="48" height="48" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round" style="opacity: 0.5; margin-bottom: 1rem;"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
-            <p>Erreur: Impossible de parser les logs. Vérifiez le format.</p>
+            <p>Aucun message ne correspond aux filtres sélectionnés.</p>
         </div>`);
         return;
     }
 
-    // Extraction des entités uniques
+    // --- Extraction des entités (FFFFFF exclu) ---
     const entities = new Map();
     messages.forEach(m => {
-        if (!entities.has(m.srcId)) entities.set(m.srcId, m.srcDesc);
-        if (!entities.has(m.destId)) entities.set(m.destId, m.destDesc);
+        if (m.srcId !== 'FFFFFF' && !entities.has(m.srcId)) entities.set(m.srcId, m.srcDesc);
+        if (m.destId !== 'FFFFFF' && !entities.has(m.destId)) entities.set(m.destId, m.destDesc);
     });
 
-    // Tri des entités : Ground Stations à gauche, Aircrafts à droite
     const entityList = Array.from(entities.keys()).sort((a, b) => {
         const descA = entities.get(a).toLowerCase();
         const descB = entities.get(b).toLowerCase();
@@ -300,23 +584,20 @@ function drawDiagram(messages) {
         return a.localeCompare(b);
     });
 
-    // Configuration des dimensions du SVG et des marges
+    // Dimensions du SVG
     const margin = { top: 60, right: 100, bottom: 60, left: 100 };
-    const entityWidth = 180; // Espace horizontal alloué par entité
-    // Calcul de la largeur totale requise, avec un fallback sur la largeur de l'écran
+    const entityWidth = 180;
     const width = Math.max(container.node().getBoundingClientRect().width, entityList.length * entityWidth + margin.left + margin.right);
-    const msgHeight = 65; // Espace vertical entre chaque message
-    // Hauteur totale basée sur le nombre de messages
+    const msgHeight = 65;
     const height = margin.top + messages.length * msgHeight + margin.bottom;
 
-    // Création de l'élément SVG principal
     const svg = container.append("svg")
         .attr("id", "sequence-diagram-svg")
         .attr("width", width)
         .attr("height", height)
         .style("background-color", "#0f172a");
 
-    // Injection du CSS directement dans le SVG pour garantir un export JPG propre (avec les bonnes couleurs)
+    // CSS inline pour l'export JPG fidèle
     svg.append("style").text(`
         .lifeline-line { stroke: rgba(255, 255, 255, 0.1); stroke-width: 1.5px; stroke-dasharray: 6 4; }
         .lifeline-rect { fill: #1e293b; stroke: rgba(255, 255, 255, 0.1); stroke-width: 1px; rx: 4px; }
@@ -326,19 +607,26 @@ function drawDiagram(messages) {
         .message-arrow { fill: #94a3b8; }
         .handoff-line { stroke: #f59e0b; stroke-width: 2px; stroke-dasharray: 4; }
         .handoff-arrow { fill: #f59e0b; }
+        .retransmission-line { stroke: #fb923c; stroke-width: 2px; stroke-dasharray: 6 3; }
+        .retransmission-arrow { fill: #fb923c; }
+        .packet-loss-line { stroke: #ef4444; stroke-width: 2.5px; }
+        .packet-loss-arrow { fill: #ef4444; }
         .message-text { fill: #94a3b8; font-size: 11px; text-anchor: middle; font-family: 'Inter', sans-serif; }
         .message-time { fill: #64748b; font-size: 10px; font-family: 'JetBrains Mono', monospace; }
+        .broadcast-wave { fill: none; stroke: #818cf8; stroke-width: 1.5px; opacity: 0.6; }
+        .broadcast-text { fill: #818cf8; font-size: 10px; font-style: italic; font-family: 'Inter', sans-serif; }
+        .session-bg { fill: rgba(56, 189, 248, 0.04); stroke: rgba(56, 189, 248, 0.15); stroke-width: 1px; rx: 6px; }
+        .session-label { fill: rgba(56, 189, 248, 0.5); font-size: 9px; font-family: 'JetBrains Mono', monospace; }
+        .alert-icon { fill: #ef4444; font-size: 14px; font-family: sans-serif; }
     `);
 
-    // --- Dessin des éléments de base ---
-
-    // Échelle X de D3 pour distribuer uniformément les lignes de vie horizontalement
+    // Échelle X
     const xScale = d3.scalePoint()
         .domain(entityList)
         .range([margin.left, width - margin.right])
         .padding(0.5);
 
-    // Groupes (<g>) pour les lignes de vie
+    // --- Lignes de vie ---
     const lifelines = svg.selectAll(".lifeline")
         .data(entityList)
         .enter()
@@ -346,32 +634,25 @@ function drawDiagram(messages) {
         .attr("class", "lifeline")
         .attr("transform", d => `translate(${xScale(d)},0)`);
 
-    // Ligne verticale pointillée pour chaque entité
     lifelines.append("line")
         .attr("class", "lifeline-line")
         .attr("y1", margin.top)
         .attr("y2", height - margin.bottom);
 
-    // En-têtes (boîtes) des lignes de vie en haut
     const headerGroup = lifelines.append("g")
         .attr("transform", `translate(0, ${margin.top / 2})`);
 
-    // Fond rectangulaire de l'en-tête
     headerGroup.append("rect")
         .attr("class", "lifeline-rect")
-        .attr("x", -70)
-        .attr("y", -20)
-        .attr("width", 140)
-        .attr("height", 44)
-        .style("stroke", d => entities.get(d).toLowerCase().includes("ground") ? "var(--accent-ground)" : "var(--accent-aircraft)");
+        .attr("x", -70).attr("y", -20)
+        .attr("width", 140).attr("height", 44)
+        .style("stroke", d => entities.get(d).toLowerCase().includes("ground") ? "#10b981" : "#f59e0b");
 
-    // Texte principal de l'en-tête (ex: 2A3261)
     headerGroup.append("text")
         .attr("class", "lifeline-text")
         .attr("y", -2)
         .text(d => d);
 
-    // Sous-titre de l'en-tête (Type d'entité et statut en l'air/au sol)
     headerGroup.append("text")
         .attr("class", "lifeline-subtext")
         .attr("y", 14)
@@ -381,87 +662,205 @@ function drawDiagram(messages) {
             if (desc.includes("ground")) text = "Ground Station";
             else if (desc.includes("aircraft")) text = "Aircraft";
             else text = "Unknown";
-
             if (desc.includes("airborne")) text += " ✈️ (Airborne)";
             if (desc.includes("on ground") && !desc.includes("ground station")) text += " 🛬 (On ground)";
-
             return text;
         });
 
-    // --- Dessin des Flèches (Messages) ---
+    // --- Regroupement visuel des Sessions X.25 ---
+    // On calcule les plages (premier et dernier index) pour chaque sessionId
+    const sessionRanges = new Map();
+    messages.forEach((m, i) => {
+        if (!m.sessionId) return;
+        if (!sessionRanges.has(m.sessionId)) {
+            sessionRanges.set(m.sessionId, { first: i, last: i });
+        } else {
+            sessionRanges.get(m.sessionId).last = i;
+        }
+    });
 
-    // Création d'un groupe pour chaque message
+    // Dessine un rectangle de fond pour chaque session (au moins 2 messages)
+    const sessionLayer = svg.append("g").attr("class", "session-layer");
+    sessionRanges.forEach((range, sessId) => {
+        if (range.last - range.first < 1) return; // Pas de fond pour un seul message
+
+        const yStart = margin.top + 40 + range.first * msgHeight - 25;
+        const yEnd = margin.top + 40 + range.last * msgHeight + 20;
+        const pad = 10;
+
+        sessionLayer.append("rect")
+            .attr("class", "session-bg")
+            .attr("x", margin.left - pad - 60)
+            .attr("y", yStart)
+            .attr("width", width - margin.left - margin.right + 2 * pad + 120)
+            .attr("height", yEnd - yStart);
+
+        // Étiquette du sessionId dans la marge gauche
+        sessionLayer.append("text")
+            .attr("class", "session-label")
+            .attr("x", margin.left - pad - 55)
+            .attr("y", yStart + 12)
+            .text(sessId);
+    });
+
+    // --- Dessin des Flèches (Messages) ---
     const msgGroup = svg.selectAll(".message-group")
         .data(messages)
         .enter()
         .append("g")
         .attr("class", "message-group")
-        // Au clic sur un message, on affiche le panneau de détails (Tooltip)
         .on("click", (event, d) => showTooltip(d));
 
     msgGroup.each(function (d, i) {
         const g = d3.select(this);
-        const y = margin.top + 40 + i * msgHeight; // Position verticale du message
-        const x1 = xScale(d.srcId);  // Position X de départ
-        const x2 = xScale(d.destId); // Position X d'arrivée
+        const y = margin.top + 40 + i * msgHeight;
+        const x1 = xScale(d.srcId);
 
-        // Si la source et la destination sont identiques (ex: broadcast interne), on ne dessine pas de flèche
+        // === CAS BROADCAST (destId === FFFFFF) ===
+        if (d.destId === 'FFFFFF') {
+            const waveX = x1 + 20;
+
+            [10, 18, 26].forEach((r, idx) => {
+                g.append("path")
+                    .attr("class", "broadcast-wave")
+                    .attr("d", `M ${waveX},${y - r} A ${r},${r} 0 0,1 ${waveX},${y + r}`)
+                    .style("animation-delay", `${idx * 0.3}s`);
+            });
+
+            g.append("line")
+                .attr("class", "message-line")
+                .attr("x1", x1 + 4).attr("y1", y)
+                .attr("x2", waveX).attr("y2", y)
+                .style("stroke", "#818cf8")
+                .style("stroke-dasharray", "3 2");
+
+            g.append("text")
+                .attr("class", "broadcast-text")
+                .attr("x", waveX + 32).attr("y", y - 6)
+                .text("📡 Broadcast GSIF");
+
+            g.append("text")
+                .attr("class", "message-time")
+                .attr("x", x1 + 15).attr("y", y + 15)
+                .attr("text-anchor", "start")
+                .text(d.time.split(' ')[1]);
+
+            return;
+        }
+
+        // === CAS NORMAL ===
+        const x2 = xScale(d.destId);
         if (x1 === x2) return;
 
-        // Détermine la direction de la flèche (1 = vers la droite, -1 = vers la gauche)
         const direction = x1 < x2 ? 1 : -1;
-        const offset = 4 * direction; // Petit décalage pour ne pas toucher la ligne de vie
+        const offset = 4 * direction;
 
-        // Ligne principale de la flèche (Pointillée si c'est un handoff)
+        // --- Détermination des classes CSS selon les flags du parseur ---
+        let lineClass = "message-line";
+        let arrowClass = "message-arrow";
+
+        if (d.isHandoff) {
+            lineClass += " handoff-line";
+            arrowClass += " handoff-arrow";
+        }
+        if (d.isRetransmission) {
+            lineClass = "message-line retransmission-line";
+            arrowClass = "message-arrow retransmission-arrow";
+        }
+        if (d.isPacketLoss) {
+            lineClass = "message-line packet-loss-line";
+            arrowClass = "message-arrow packet-loss-arrow";
+        }
+
+        // Ligne de la flèche
         g.append("line")
-            .attr("class", d.isHandoff ? "message-line handoff-line" : "message-line")
-            .attr("x1", x1 + offset)
-            .attr("y1", y)
-            .attr("x2", x2 - offset)
-            .attr("y2", y);
+            .attr("class", lineClass)
+            .attr("x1", x1 + offset).attr("y1", y)
+            .attr("x2", x2 - offset).attr("y2", y);
 
         // Pointe (triangle) de la flèche
         const headLen = 12;
         const headWidth = 5;
         g.append("path")
-            .attr("class", d.isHandoff ? "message-arrow handoff-arrow" : "message-arrow")
+            .attr("class", arrowClass)
             .attr("d", direction > 0 ?
                 `M ${x2 - offset},${y} L ${x2 - offset - headLen},${y - headWidth} L ${x2 - offset - headLen},${y + headWidth} Z` :
                 `M ${x2 - offset},${y} L ${x2 - offset + headLen},${y - headWidth} L ${x2 - offset + headLen},${y + headWidth} Z`
             );
 
-        // Texte au-dessus de la flèche (Résumé du message)
+        // Icône d'alerte pour les pertes de paquets
+        if (d.isPacketLoss) {
+            g.append("text")
+                .attr("class", "alert-icon")
+                .attr("x", (x1 + x2) / 2)
+                .attr("y", y - 22)
+                .attr("text-anchor", "middle")
+                .text("⚠");
+        }
+
+        // Texte résumé au-dessus de la flèche
         g.append("text")
             .attr("class", "message-text")
-            .attr("x", (x1 + x2) / 2) // Centré entre les deux lignes de vie
+            .attr("x", (x1 + x2) / 2)
             .attr("y", y - 10)
             .text(d.summary);
 
-        // Texte en-dessous de la flèche (Heure précise de l'échange)
+        // Heure en-dessous de la flèche
         g.append("text")
             .attr("class", "message-time")
             .attr("x", direction > 0 ? x1 + 15 : x1 - 15)
             .attr("y", y + 15)
             .attr("text-anchor", direction > 0 ? "start" : "end")
-            .text(d.time.split(' ')[1]); // Ne garde que la portion HH:MM:SS de l'heure
+            .text(d.time.split(' ')[1]);
     });
 }
 
 // ---------------------------------------------------------------------
 // showTooltip: Affiche la fenêtre modale contenant les détails bruts du log
+// Enrichi avec les métadonnées du parseur (session, anomalies, couches).
 // ---------------------------------------------------------------------
 function showTooltip(d) {
     const tt = document.getElementById("message-tooltip");
 
-    // Remplissage dynamique des champs du HTML avec les données de l'objet message
+    // Remplissage dynamique des champs principaux
     document.getElementById("tt-time").textContent = d.time;
     document.getElementById("tt-source").textContent = `${d.srcId} (${d.srcDesc})`;
     document.getElementById("tt-dest").textContent = `${d.destId} (${d.destDesc})`;
     document.getElementById("tt-freq").textContent = "Freq: " + d.freq;
     document.getElementById("tt-snr").textContent = "SNR: " + d.snr;
-    document.getElementById("tt-payload").textContent = d.payload;
 
-    // Suppression de la classe 'hidden' pour rendre le tooltip visible (avec animation CSS)
+    // Construction du contenu enrichi du payload
+    let enrichedPayload = "";
+
+    // Flags d'anomalies
+    if (d.isRetransmission) enrichedPayload += "🔁 RETRANSMISSION DÉTECTÉE (même sseq AVLC)\n";
+    if (d.isPacketLoss) enrichedPayload += "⚠️ PERTE DE PAQUET DÉTECTÉE (saut de sseq AVLC)\n";
+    if (d.isHandoff) enrichedPayload += "🔄 HANDOFF DÉTECTÉ\n";
+
+    // Session X.25
+    if (d.sessionId) enrichedPayload += `📋 Session X.25: ${d.sessionId}\n`;
+
+    // Détails des couches extraites
+    if (d.layers.avlc) {
+        enrichedPayload += `── AVLC ── type: ${d.layers.avlc.type || '?'}`;
+        if (d.layers.avlc.sseq !== undefined) enrichedPayload += ` | sseq: ${d.layers.avlc.sseq}`;
+        if (d.layers.avlc.rseq !== undefined) enrichedPayload += ` | rseq: ${d.layers.avlc.rseq}`;
+        if (d.layers.avlc.poll !== undefined) enrichedPayload += ` | P/F: ${d.layers.avlc.poll}`;
+        enrichedPayload += "\n";
+    }
+    if (d.layers.x25) {
+        enrichedPayload += `── X.25 ── type: ${d.layers.x25.type || '?'}`;
+        if (d.layers.x25.grp !== undefined) enrichedPayload += ` | grp: ${d.layers.x25.grp}`;
+        if (d.layers.x25.chan !== undefined) enrichedPayload += ` | chan: ${d.layers.x25.chan}`;
+        if (d.layers.x25.sseq !== undefined) enrichedPayload += ` | sseq: ${d.layers.x25.sseq}`;
+        if (d.layers.x25.rseq !== undefined) enrichedPayload += ` | rseq: ${d.layers.x25.rseq}`;
+        enrichedPayload += "\n";
+    }
+
+    enrichedPayload += "\n" + d.payload;
+
+    document.getElementById("tt-payload").textContent = enrichedPayload;
+
     tt.classList.remove("hidden");
 }
 

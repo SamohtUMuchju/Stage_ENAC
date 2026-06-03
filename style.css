@@ -1,31 +1,35 @@
 :root {
-    /* Color Palette - Premium Dark Mode */
-    --bg-primary: #0f172a;
-    --bg-secondary: #1e293b;
-    --bg-panel: rgba(30, 41, 59, 0.7);
+    /* Color Palette - Modern Deep Dark Mode */
+    --bg-primary: #0B1120; /* Very deep night blue */
+    --bg-secondary: #0f172a; /* Slate 900 */
+    --bg-panel: rgba(15, 23, 42, 0.65); /* Glassmorphism panel */
     --text-primary: #f8fafc;
     --text-secondary: #94a3b8;
-    --text-muted: #64748b;
+    --text-muted: #475569;
     
     --accent-primary: #38bdf8;
     --accent-hover: #0ea5e9;
-    --accent-ground: #10b981; /* Green for ground stations */
-    --accent-aircraft: #f59e0b; /* Amber/Orange for aircraft */
+    --accent-ground: #06b6d4; /* Cyan/Emerald glow for ground */
+    --accent-aircraft: #f59e0b; /* Amber glow for aircraft */
     
-    --border-color: rgba(255, 255, 255, 0.1);
+    --border-color: rgba(255, 255, 255, 0.05); /* Very thin, transparent border */
     
     /* Typography */
     --font-main: 'Inter', system-ui, -apple-system, sans-serif;
     --font-mono: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace;
     
     /* Layout */
-    --header-height: 70px;
+    --header-height: 80px;
     --panel-gap: 1.5rem;
     --radius-lg: 16px;
     --radius-md: 8px;
+    --radius-pill: 9999px;
     
     /* Effects */
-    --shadow-glass: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+    --shadow-glass: 0 10px 40px -10px rgba(0, 0, 0, 0.5);
+    --shadow-glow-primary: 0 0 15px rgba(56, 189, 248, 0.4);
+    --shadow-glow-ground: 0 0 15px rgba(6, 182, 212, 0.4);
+    --shadow-glow-aircraft: 0 0 15px rgba(245, 158, 11, 0.4);
     --backdrop-blur: blur(12px);
 }
 
@@ -38,6 +42,8 @@
 body {
     font-family: var(--font-main);
     background-color: var(--bg-primary);
+    background-image: radial-gradient(circle at top right, rgba(56, 189, 248, 0.05) 0%, transparent 40%),
+                      radial-gradient(circle at bottom left, rgba(245, 158, 11, 0.03) 0%, transparent 40%);
     color: var(--text-primary);
     min-height: 100vh;
     display: flex;
@@ -47,13 +53,14 @@ body {
 
 /* Header */
 .app-header {
-    height: var(--header-height);
+    min-height: var(--header-height);
     display: flex;
     flex-direction: column;
     justify-content: center;
-    padding: 0 2rem;
-    background: rgba(15, 23, 42, 0.8);
-    backdrop-filter: blur(10px);
+    padding: 1rem 2rem;
+    background: rgba(11, 17, 32, 0.8);
+    backdrop-filter: var(--backdrop-blur);
+    -webkit-backdrop-filter: var(--backdrop-blur);
     border-bottom: 1px solid var(--border-color);
     position: sticky;
     top: 0;
@@ -61,10 +68,11 @@ body {
 }
 
 .app-header h1 {
-    font-size: 1.25rem;
-    font-weight: 600;
+    font-size: 1.35rem;
+    font-weight: 700;
     letter-spacing: 0.5px;
-    color: var(--accent-primary);
+    color: var(--text-primary);
+    text-shadow: 0 0 20px rgba(255,255,255,0.1);
 }
 
 .app-header p {
@@ -89,7 +97,7 @@ body {
     }
 }
 
-/* Panels */
+/* Panels (Glassmorphism) */
 .panel {
     background: var(--bg-panel);
     border: 1px solid var(--border-color);
@@ -98,7 +106,8 @@ body {
     flex-direction: column;
     overflow: hidden;
     backdrop-filter: var(--backdrop-blur);
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    -webkit-backdrop-filter: var(--backdrop-blur);
+    box-shadow: var(--shadow-glass);
 }
 
 .input-panel {
@@ -121,31 +130,33 @@ body {
 }
 
 .panel-header h2 {
-    font-size: 1rem;
-    font-weight: 500;
+    font-size: 0.95rem;
+    font-weight: 600;
     color: var(--text-primary);
+    text-transform: uppercase;
+    letter-spacing: 1px;
 }
 
-/* Button */
+/* Buttons */
 .primary-btn {
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    background-color: var(--accent-primary);
+    background: linear-gradient(135deg, var(--accent-primary), var(--accent-hover));
     color: #000;
     border: none;
     padding: 0.6rem 1.2rem;
-    border-radius: var(--radius-md);
-    font-size: 0.9rem;
-    font-weight: 600;
+    border-radius: var(--radius-pill);
+    font-size: 0.85rem;
+    font-weight: 700;
     cursor: pointer;
-    transition: all 0.2s ease;
+    transition: all 0.3s ease;
+    box-shadow: var(--shadow-glow-primary);
 }
 
 .primary-btn:hover {
-    background-color: var(--accent-hover);
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(56, 189, 248, 0.3);
+    transform: translateY(-2px);
+    box-shadow: 0 0 25px rgba(56, 189, 248, 0.6);
 }
 
 .primary-btn:active {
@@ -156,19 +167,19 @@ body {
     display: flex;
     align-items: center;
     gap: 0.4rem;
-    background-color: transparent;
+    background-color: rgba(255,255,255,0.03);
     color: var(--text-primary);
     border: 1px solid var(--border-color);
     padding: 0.4rem 0.8rem;
-    border-radius: var(--radius-md);
+    border-radius: var(--radius-pill);
     font-size: 0.8rem;
     cursor: pointer;
     transition: all 0.2s ease;
 }
 
 .secondary-btn:hover {
-    background-color: rgba(255, 255, 255, 0.1);
-    border-color: var(--text-secondary);
+    background-color: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255,255,255,0.2);
 }
 
 /* Textarea */
@@ -181,7 +192,7 @@ textarea#log-input {
     color: var(--text-secondary);
     font-family: var(--font-mono);
     font-size: 0.85rem;
-    line-height: 1.5;
+    line-height: 1.6;
     padding: 1.5rem;
     outline: none;
 }
@@ -193,38 +204,39 @@ textarea#log-input:focus {
 /* Legend */
 .legend {
     display: flex;
-    gap: 1rem;
-    font-size: 0.85rem;
+    gap: 1.5rem;
+    font-size: 0.8rem;
+    font-weight: 500;
     color: var(--text-secondary);
 }
 
 .legend-item {
     display: flex;
     align-items: center;
-    gap: 0.4rem;
+    gap: 0.5rem;
 }
 
 .legend-color {
-    width: 10px;
-    height: 10px;
+    width: 8px;
+    height: 8px;
     border-radius: 50%;
 }
 
 .legend-color.ground {
     background-color: var(--accent-ground);
-    box-shadow: 0 0 8px var(--accent-ground);
+    box-shadow: var(--shadow-glow-ground);
 }
 
 .legend-color.aircraft {
     background-color: var(--accent-aircraft);
-    box-shadow: 0 0 8px var(--accent-aircraft);
+    box-shadow: var(--shadow-glow-aircraft);
 }
 
-/* Filter Buttons */
+/* Filter Buttons (Pills) */
 #filter-container {
     padding: 1rem 1.5rem;
     border-bottom: 1px solid var(--border-color);
-    background: rgba(255, 255, 255, 0.01);
+    background: rgba(0, 0, 0, 0.1);
     display: flex;
     align-items: center;
     gap: 1rem;
@@ -234,55 +246,107 @@ textarea#log-input:focus {
     display: none;
 }
 .filter-label {
-    font-size: 0.85rem;
+    font-size: 0.8rem;
     color: var(--text-secondary);
-    font-weight: 500;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
 }
 #entity-filters {
     display: flex;
     flex-wrap: wrap;
-    gap: 0.5rem;
+    gap: 0.6rem;
 }
 .filter-btn {
-    background: var(--bg-secondary);
+    background: rgba(255,255,255,0.02);
     border: 1px solid var(--border-color);
-    color: var(--text-primary);
-    padding: 0.4rem 0.8rem;
-    border-radius: 20px;
-    font-size: 0.8rem;
+    color: var(--text-secondary);
+    padding: 0.35rem 1rem;
+    border-radius: var(--radius-pill);
+    font-size: 0.75rem;
+    font-weight: 500;
     cursor: pointer;
-    transition: all 0.2s ease;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     display: flex;
     align-items: center;
-    gap: 0.4rem;
+    gap: 0.5rem;
 }
+
 .filter-btn:hover {
-    background: rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--text-primary);
 }
+
+/* Active State for Filter Pills */
 .filter-btn.active {
-    background: var(--accent-primary);
-    color: #000;
-    border-color: var(--accent-primary);
-    font-weight: 600;
+    color: var(--text-primary);
+    background: rgba(255,255,255,0.05);
 }
-.filter-btn.ground::before {
-    content: '';
-    display: inline-block;
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background: var(--accent-ground);
+
+/* Filter pill states for Ground and Aircraft */
+.filter-btn.ground {
+    background: rgba(6, 182, 212, 0.05);
+    border-color: rgba(6, 182, 212, 0.2);
+    color: rgba(255, 255, 255, 0.6);
 }
-.filter-btn.aircraft::before {
-    content: '';
-    display: inline-block;
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background: var(--accent-aircraft);
+
+.filter-btn.aircraft {
+    background: rgba(245, 158, 11, 0.05);
+    border-color: rgba(245, 158, 11, 0.2);
+    color: rgba(255, 255, 255, 0.6);
 }
-.filter-btn.active::before {
-    box-shadow: 0 0 4px rgba(0,0,0,0.5);
+
+.filter-btn.ground:hover {
+    background: rgba(6, 182, 212, 0.1);
+    color: var(--text-primary);
+}
+
+.filter-btn.aircraft:hover {
+    background: rgba(245, 158, 11, 0.1);
+    color: var(--text-primary);
+}
+
+/* Active State */
+.filter-btn.active.ground {
+    background: rgba(6, 182, 212, 0.15);
+    border-color: var(--accent-ground);
+    color: #fff;
+    box-shadow: 0 0 10px rgba(6, 182, 212, 0.15) inset, 0 0 10px rgba(6, 182, 212, 0.15);
+}
+
+.filter-btn.active.aircraft {
+    background: rgba(245, 158, 11, 0.15);
+    border-color: var(--accent-aircraft);
+    color: #fff;
+    box-shadow: 0 0 10px rgba(245, 158, 11, 0.15) inset, 0 0 10px rgba(245, 158, 11, 0.15);
+}
+
+/* Protocol Checkboxes */
+.checkboxes {
+    display: flex;
+    gap: 0.8rem;
+    align-items: center;
+}
+.protocol-cb {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+    background: rgba(255, 255, 255, 0.02);
+    padding: 0.35rem 0.8rem;
+    border-radius: var(--radius-pill);
+    border: 1px solid var(--border-color);
+    transition: all 0.3s;
+}
+.protocol-cb:hover {
+    background: rgba(255, 255, 255, 0.06);
+    color: var(--text-primary);
+}
+.protocol-cb input {
+    cursor: pointer;
+    accent-color: var(--accent-primary);
 }
 
 /* Diagram Container */
@@ -315,29 +379,31 @@ svg {
 }
 
 .lifeline-line {
-    stroke: var(--border-color);
-    stroke-width: 1.5px;
-    stroke-dasharray: 6 4;
+    stroke: rgba(255,255,255,0.1);
+    stroke-width: 1px;
+    stroke-dasharray: 4 4;
 }
 
 .lifeline-rect {
     fill: var(--bg-secondary);
-    stroke: var(--border-color);
+    stroke: rgba(255,255,255,0.15);
     stroke-width: 1px;
-    rx: 4px;
+    rx: 6px;
 }
 
 .lifeline-text {
     fill: var(--text-primary);
-    font-size: 12px;
-    font-weight: 500;
+    font-size: 11px;
+    font-weight: 600;
     text-anchor: middle;
+    letter-spacing: 0.5px;
 }
 
 .lifeline-subtext {
     fill: var(--text-secondary);
-    font-size: 10px;
+    font-size: 9px;
     text-anchor: middle;
+    font-family: var(--font-mono);
 }
 
 .message-group {
@@ -345,20 +411,20 @@ svg {
 }
 
 .message-line {
-    stroke: var(--text-secondary);
+    stroke: var(--text-muted);
     stroke-width: 1.5px;
-    transition: all 0.2s ease;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .message-arrow {
-    fill: var(--text-secondary);
-    transition: all 0.2s ease;
+    fill: var(--text-muted);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* Handoff Highlights */
 .handoff-line {
     stroke: var(--accent-aircraft);
-    stroke-width: 2px;
+    stroke-width: 1.5px;
     stroke-dasharray: 4;
 }
 
@@ -366,130 +432,404 @@ svg {
     fill: var(--accent-aircraft);
 }
 
-.message-text {
-    fill: var(--text-secondary);
-    font-size: 11px;
-    text-anchor: middle;
-    transition: all 0.2s ease;
+/* Packet Loss Highlights */
+.packet-loss-line {
+    stroke: #ef4444 !important; /* Red */
+    stroke-width: 2px !important;
 }
 
+.packet-loss-arrow {
+    fill: #ef4444 !important;
+}
+
+/* Retransmission Highlights */
+.retransmission-line {
+    stroke: #fb923c !important; /* Orange */
+    stroke-width: 2px !important;
+    stroke-dasharray: 6 3;
+}
+
+.retransmission-arrow {
+    fill: #fb923c !important;
+}
+
+/* Session X.25 - fond de regroupement */
+.session-bg {
+    fill: rgba(56, 189, 248, 0.03);
+    stroke: rgba(56, 189, 248, 0.1);
+    stroke-width: 1px;
+    rx: 8px;
+    pointer-events: none;
+}
+
+.session-label {
+    fill: rgba(56, 189, 248, 0.4);
+    font-size: 9px;
+    font-family: var(--font-mono);
+    pointer-events: none;
+    letter-spacing: 1px;
+}
+
+.message-text {
+    fill: var(--text-secondary);
+    font-size: 10px;
+    font-family: var(--font-mono);
+    text-anchor: middle;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* WAOUH EFFECT: Hover sur un message SVG */
 .message-group:hover .message-line {
     stroke: var(--accent-primary);
-    stroke-width: 2px;
+    stroke-width: 2.5px;
+    filter: drop-shadow(0 0 6px rgba(56, 189, 248, 0.8));
 }
 
 .message-group:hover .message-arrow {
     fill: var(--accent-primary);
+    filter: drop-shadow(0 0 6px rgba(56, 189, 248, 0.8));
 }
 
 .message-group:hover .message-text {
-    fill: var(--text-primary);
-    font-weight: 600;
+    fill: #ffffff;
+    font-weight: 700;
+    font-size: 11px;
+    text-shadow: 0 0 8px rgba(255, 255, 255, 0.5);
 }
 
 .message-time {
     fill: var(--text-muted);
-    font-size: 10px;
+    font-size: 9px;
     font-family: var(--font-mono);
 }
 
-/* Tooltip (Glassmorphism) */
+/* Tooltip (Glassmorphism & Terminal Look) */
 .tooltip {
     position: absolute;
     top: 50%;
     left: 50%;
-    transform: translate(-50%, -50%);
-    background: rgba(15, 23, 42, 0.85);
-    backdrop-filter: var(--backdrop-blur);
-    -webkit-backdrop-filter: var(--backdrop-blur);
-    border: 1px solid rgba(255, 255, 255, 0.15);
-    border-radius: var(--radius-md);
-    box-shadow: var(--shadow-glass);
-    width: 400px;
+    transform: translate(-50%, -48%) scale(0.95);
+    background: rgba(11, 17, 32, 0.85); /* Deep dark background */
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: var(--radius-lg);
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
+    width: 450px;
     max-width: 90vw;
     z-index: 1000;
-    opacity: 1;
-    transition: opacity 0.3s ease, transform 0.3s ease;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1), transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
     display: flex;
     flex-direction: column;
 }
 
+/* When the app.js removes the hidden class, it falls back to the above base styling but we need to override the opacity/transform */
+.tooltip:not(.hidden) {
+    opacity: 1;
+    pointer-events: auto;
+    transform: translate(-50%, -50%) scale(1);
+}
+
 .tooltip.hidden {
-    opacity: 0;
+    opacity: 0 !important;
     pointer-events: none;
-    transform: translate(-50%, -45%);
+    transform: translate(-50%, -45%) scale(0.95);
 }
 
 .tooltip-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 0.8rem 1rem;
-    border-bottom: 1px solid var(--border-color);
-    background: rgba(255, 255, 255, 0.03);
+    padding: 1rem 1.2rem;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+    background: rgba(255, 255, 255, 0.02);
     font-family: var(--font-mono);
     font-size: 0.85rem;
     color: var(--accent-primary);
+    border-top-left-radius: var(--radius-lg);
+    border-top-right-radius: var(--radius-lg);
 }
 
 #close-tooltip {
-    background: none;
+    background: rgba(255,255,255,0.05);
     border: none;
     color: var(--text-secondary);
-    font-size: 1.5rem;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
     cursor: pointer;
-    line-height: 1;
+    transition: all 0.2s;
 }
 
 #close-tooltip:hover {
+    background: rgba(255,255,255,0.1);
     color: var(--text-primary);
 }
 
 .tooltip-entities {
-    padding: 1rem 1rem 0.5rem;
+    padding: 1.2rem 1.2rem 0.5rem;
+    font-family: var(--font-mono);
     font-weight: 600;
-    font-size: 0.95rem;
+    font-size: 0.9rem;
     display: flex;
     align-items: center;
     gap: 0.5rem;
+    color: var(--text-primary);
 }
 
 .tooltip-meta {
-    padding: 0 1rem 1rem;
-    font-size: 0.8rem;
-    color: var(--text-secondary);
-    border-bottom: 1px solid var(--border-color);
+    padding: 0 1.2rem 1rem;
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    border-bottom: 1px solid rgba(255,255,255,0.05);
 }
 
 .tooltip-body {
-    padding: 1rem;
-    max-height: 300px;
+    padding: 1.2rem;
+    max-height: 350px;
     overflow-y: auto;
 }
 
 .tooltip-body pre {
     font-family: var(--font-mono);
     font-size: 0.8rem;
-    color: var(--text-primary);
+    color: #a7f3d0; /* Terminal green tint */
     white-space: pre-wrap;
-    line-height: 1.4;
+    line-height: 1.5;
 }
 
-/* Scrollbar styling */
+/* Broadcast Waves (SVG) */
+.broadcast-wave {
+    fill: none;
+    stroke: var(--accent-primary);
+    stroke-width: 1.5px;
+    opacity: 0;
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: broadcast-pulse 2s cubic-bezier(0.2, 0.8, 0.2, 1) infinite;
+}
+.broadcast-wave:nth-child(2) { animation-delay: 0.2s; }
+.broadcast-wave:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes broadcast-pulse {
+    0%   { opacity: 0.8; transform: scale(0.8); }
+    100% { opacity: 0;   transform: scale(1.5); }
+}
+
+.broadcast-text {
+    fill: var(--accent-primary);
+    font-size: 10px;
+    font-style: italic;
+    text-anchor: start;
+    font-family: var(--font-main);
+    opacity: 0.8;
+}
+
+/* Badge de symétrie sur les boutons de filtre */
+.symmetry-badge {
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    margin-left: 0.3rem;
+    box-shadow: 0 0 6px currentColor;
+    opacity: 0.8;
+}
+
+.symmetry-badge.good {
+    background-color: #10b981;
+    color: #10b981;
+}
+
+.symmetry-badge.medium {
+    background-color: #f59e0b;
+    color: #f59e0b;
+}
+
+.symmetry-badge.bad {
+    background-color: #ef4444;
+    color: #ef4444;
+}
+
+/* Menu de tri */
+.sort-controls {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 0.6rem;
+}
+.sort-controls label {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    font-weight: 600;
+    text-transform: uppercase;
+}
+.sort-select {
+    background: rgba(255,255,255,0.02);
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    padding: 0.3rem 0.6rem;
+    font-size: 0.8rem;
+    font-family: var(--font-main);
+    cursor: pointer;
+    outline: none;
+    transition: all 0.2s;
+}
+.sort-select:hover,
+.sort-select:focus {
+    border-color: rgba(255,255,255,0.2);
+    background: rgba(255,255,255,0.05);
+}
+.sort-select option {
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+}
+
+/* Filter group layout */
+.filter-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    width: 100%;
+}
+
+/* ==========================================================================
+   SCROLLBARS - Stylized
+   ========================================================================== */
 ::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
+    width: 6px;
+    height: 6px;
 }
 
 ::-webkit-scrollbar-track {
-    background: rgba(0, 0, 0, 0.1);
+    background: transparent;
 }
 
 ::-webkit-scrollbar-thumb {
-    background: var(--bg-secondary);
-    border-radius: 4px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-    background: var(--text-muted);
+    background: rgba(255, 255, 255, 0.2);
+}
+
+/* ==========================================================================
+   TABS NAVIGATION
+   ========================================================================== */
+.app-tabs {
+    display: flex;
+    gap: 1.5rem;
+    margin-top: 1rem;
+}
+
+.tab-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    font-weight: 600;
+    padding: 0.5rem 0.2rem;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: all 0.3s ease;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.tab-btn:hover {
+    color: var(--text-primary);
+}
+
+.tab-btn.active {
+    color: var(--accent-primary);
+    border-bottom-color: var(--accent-primary);
+    text-shadow: 0 0 10px rgba(56, 189, 248, 0.3);
+}
+
+/* Utilities */
+.hidden {
+    display: none !important;
+}
+
+/* ==========================================================================
+   ANATOMY TAB (SPLIT SCREEN)
+   ========================================================================== */
+#tab-anatomy {
+    flex-direction: row;
+    align-items: stretch;
+}
+
+.anatomy-left {
+    flex: 6;
+    display: flex;
+    flex-direction: column;
+}
+
+.anatomy-right {
+    flex: 4;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Code Block */
+.anatomy-code {
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: var(--radius-md);
+    padding: 1.5rem;
+    font-family: var(--font-mono);
+    font-size: 0.85rem;
+    line-height: 1.6;
+    overflow-y: auto;
+    flex: 1;
+    white-space: pre-wrap;
+    word-break: break-all;
+    border: 1px solid rgba(255,255,255,0.03);
+}
+
+.anatomy-term {
+    color: var(--accent-primary);
+    cursor: pointer;
+    padding: 0.1rem 0.3rem;
+    border-radius: 4px;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    font-weight: 600;
+}
+
+.anatomy-term:hover, .anatomy-term.active {
+    background: rgba(56, 189, 248, 0.15);
+    color: #fff;
+    text-shadow: 0 0 8px rgba(255,255,255,0.3);
+    box-shadow: 0 0 0 1px rgba(56, 189, 248, 0.3);
+}
+
+/* Explanation Box */
+.explanation-box {
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255,255,255,0.03);
+    border-radius: var(--radius-md);
+    padding: 2rem;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    color: var(--text-primary);
+    font-size: 0.95rem;
+    line-height: 1.7;
+}
+
+.explanation-default {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    color: var(--text-muted);
 }

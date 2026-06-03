@@ -8,7 +8,7 @@
     <!-- Google Fonts for premium typography -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
     <!-- D3.js library -->
     <script src="https://d3js.org/d3.v7.min.js"></script>
@@ -18,9 +18,14 @@
     <header class="app-header">
         <h1>VDL2 / ATN Protocol Analyzer</h1>
         <p>Interactive Sequence Diagram Generator</p>
+        <div class="app-tabs">
+            <button class="tab-btn active" data-tab="tab-analyzer">Analyseur de Séquence</button>
+            <button class="tab-btn" data-tab="tab-anatomy">Anatomie d'une Trame</button>
+        </div>
     </header>
 
-    <main class="app-container">
+    <!-- TAB 1 : Analyseur -->
+    <main class="app-container" id="tab-analyzer">
         <!-- Left Panel: Input -->
         <section class="panel input-panel">
             <div class="panel-header">
@@ -10028,8 +10033,29 @@ AVLC type: S (Receive Ready) P/F: 1 rseq: 0
             </div>
             <!-- Filter container -->
             <div id="filter-container" class="hidden">
-                <span class="filter-label">Filtrer par Entité :</span>
-                <div id="entity-filters"></div>
+                <div class="filter-group">
+                    <div style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;">
+                        <span class="filter-label">Entités :</span>
+                        <div class="sort-controls">
+                            <label for="sort-select">Trier par :</label>
+                            <select id="sort-select" class="sort-select">
+                                <option value="default">Type (GS → AC)</option>
+                                <option value="volume">Volume de messages</option>
+                                <option value="symmetry">Qualité d'échange (Symétrie)</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div id="entity-filters" class="filters-row"></div>
+                </div>
+                <div class="filter-group" style="margin-top: 1rem;">
+                    <span class="filter-label">Protocoles :</span>
+                    <div id="protocol-filters" class="filters-row checkboxes">
+                        <label class="protocol-cb"><input type="checkbox" value="AVLC" checked> AVLC</label>
+                        <label class="protocol-cb"><input type="checkbox" value="X.25" checked> X.25</label>
+                        <label class="protocol-cb"><input type="checkbox" value="IDRP" checked> IDRP</label>
+                        <label class="protocol-cb"><input type="checkbox" value="ACARS/CPDLC" checked> ACARS/CPDLC</label>
+                    </div>
+                </div>
             </div>
             <div id="diagram-container">
                 <div id="diagram-empty-state">
@@ -10042,6 +10068,44 @@ AVLC type: S (Receive Ready) P/F: 1 rseq: 0
                         <line x1="12" y1="22.08" x2="12" y2="12"></line>
                     </svg>
                     <p>Cliquez sur "Analyser" pour générer le diagramme.</p>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- TAB 2 : Anatomie d'une Trame -->
+    <main class="app-container hidden" id="tab-anatomy">
+        <!-- Gauche : Trame Brute -->
+        <section class="panel anatomy-left">
+            <div class="panel-header">
+                <h2>Trame Brute (Log interactif)</h2>
+            </div>
+            <div class="anatomy-code" id="anatomy-raw-log">
+[2026-02-02 13:53:46 CET] [136.725] [-36.9/-50.6 dBFS] [13.7 dB] [-0.7 ppm]
+11905A (Ground station, On ground) -> 4BB861 (Aircraft): Command
+AVLC type: I sseq: 5 rseq: 5 poll: 0
+ X.25 Data: grp: 11 chan: 255 sseq: 2 rseq: 2 more: 0
+  X.25 reasm status: skipped
+  X.233 CLNP Data (compressed header):
+   LRef: 0x43 Prio: 11 Flags: 0xc0
+   Lifetime: 47.0 sec
+   PDU Id: 0xd803
+   X.224 COTP Data Ack:
+    dst_ref: 0x0041
+    rseq: 2 credit: 15
+    ATN checksum: a8 d9 e2 0e
+            </div>
+        </section>
+
+        <!-- Droite : Panneau Instructeur -->
+        <section class="panel anatomy-right">
+            <div class="panel-header">
+                <h2>Panneau Instructeur</h2>
+            </div>
+            <div id="anatomy-explanation" class="explanation-box">
+                <div class="explanation-default">
+                    <svg viewBox="0 0 24 24" width="48" height="48" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round" style="opacity: 0.5; margin-bottom: 1rem;"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+                    <p>Survolez ou cliquez sur les lignes du log à gauche pour voir l'explication pédagogique détaillée.</p>
                 </div>
             </div>
         </section>
