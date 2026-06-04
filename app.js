@@ -29,49 +29,59 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    // --- Logique Pédagogique Granulaire (Anatomie d'une Trame) ---
-    const anatomyExplanations = {
+    // --- Base de Connaissances (Dictionnaire de données) ---
+    const protocolDefinitions = {
         'radio_power': "<strong>[Couche Physique / SDR] Puissance</strong><br><br>Puissance du signal reçu / Plancher de bruit de fond (dBFS).",
         'radio_snr': "<strong>[Couche Physique / SDR] SNR</strong><br><br>SNR (Signal to Noise Ratio). Ratio critique pour la qualité du signal. Sous un certain seuil, le FEC (Forward Error Correction) ne peut plus compenser et la trame est perdue.",
         'radio_drift': "<strong>[Couche Physique / SDR] Dérive</strong><br><br>Dérive de l'oscillateur. Mesure le décalage de fréquence de l'horloge de l'émetteur.",
         'avlc_type_i': "<strong>[AVLC] Trame d'Information</strong><br><br>Transfère de la donnée utile.",
         'avlc_type_s_u': "<strong>[AVLC] Trame de Contrôle</strong><br><br>Trame Supervisory (ex: accusé de réception pur) ou Unnumbered (ex: XID pour négociation de connexion).",
-        'avlc_sseq': "<strong>[AVLC] Send Sequence</strong><br><br>Numéro de la trame courante envoyée (Modulo 8).",
-        'avlc_rseq': "<strong>[AVLC] Receive Sequence</strong><br><br>Le numéro de la prochaine trame attendue. Sert d'acquittement implicite pour toutes les trames précédentes.",
-        'avlc_poll': "<strong>[AVLC] Bit P/F (Poll/Final)</strong><br><br>S'il est à 1, l'émetteur exige une réponse immédiate de la station réceptrice.",
-        'x25_lci': "<strong>[X.25] LCI (Logical Channel Identifier)</strong><br><br>C'est le numéro de \"tuyau\" (grp et chan). Il identifie de manière unique le circuit virtuel X.25 ouvert entre l'avion et le sol.",
-        'x25_more': "<strong>[X.25] Bit M (More Data)</strong><br><br>S'il est à 1, cela signifie que la charge utile était trop grosse pour la MTU radio et a été fragmentée. La suite arrive dans le prochain paquet.",
+        'avlc_sseq': "<strong>[AVLC] Send Sequence (sseq)</strong><br><br>Numéro de séquence de la trame de Couche Liaison envoyée (Modulo 8). Permet le ré-ordonnancement radio.",
+        'avlc_rseq': "<strong>[AVLC] Receive Sequence (rseq)</strong><br><br>Acquittement implicite (Piggybacking) au niveau liaison. Indique le numéro de la <em>prochaine</em> trame radio attendue. La réception d'un rseq = N valide de manière cumulative toutes les trames jusqu'à N-1 inclus.",
+        'x25_sseq': "<strong>[X.25] Packet Send Sequence (sseq)</strong><br><br>Numéro de séquence du paquet Réseau (Modulo 8 par défaut, ou 128). Suit l'acheminement de bout en bout sur le circuit virtuel.",
+        'x25_rseq': "<strong>[X.25] Packet Receive Sequence (rseq)</strong><br><br>Acquittement au niveau Réseau. Valide la réception des paquets X.25 précédents sur ce circuit virtuel spécifique.",
+        'avlc_poll': "<strong>[AVLC] Bit P/F (Poll/Final)</strong><br><br>Différencie une commande d'une réponse. S'il est à 1 sur une Commande (Poll), l'émetteur exige une réponse immédiate de la station réceptrice. S'il est à 1 sur une Réponse (Final), il indique que la station a terminé de répondre.",
+        'x25_lci': "<strong>[X.25] LCI (Logical Channel Identifier)</strong><br><br>Identifiant de Couche 3 (Réseau) calculé par grp * 256 + chan. Il définit de manière unique le circuit virtuel ouvert entre les deux routeurs.",
+        'x25_more': "<strong>[X.25] Bit M (More Data)</strong><br><br>Fragmentation de la Couche Réseau (ISO 8208). Indique qu'un message de niveau supérieur (ex: PDU COTP) dépasse la taille maximale du paquet négociée pour ce circuit X.25, et se poursuit dans le paquet suivant.",
         'app_lref': "<strong>[SNDCF] Local Reference</strong><br><br>Pour économiser de la bande passante VHF, les longues adresses OACI réseau (NSAP) sont remplacées par ce petit identifiant local après la négociation initiale.",
         'app_lifetime': "<strong>[CLNP] Lifetime</strong><br><br>L'équivalent du TTL (Time To Live). Durée de vie restante du paquet en secondes avant qu'un routeur de l'ATN ne le détruise.",
         'app_dst_ref': "<strong>[COTP X.224] Destination Reference</strong><br><br>Identifiant unique de la connexion de transport de bout en bout (Couche 4).",
-        'app_credit': "<strong>[IDRP / COTP] Credit</strong><br><br>Mécanisme de contrôle de flux. Indique la taille de la fenêtre d'anticipation, soit le nombre de paquets que ce routeur a encore l'espace mémoire d'accepter."
+        'app_credit': "<strong>[IDRP / COTP] Credit</strong><br><br>Mécanisme de contrôle de flux. Repose sur le concept de fenêtre d'anticipation (Sliding Window) : indique combien de paquets le récepteur a l'espace mémoire d'accepter sans engorger ses tampons (buffers)."
     };
 
     const rawLogContainer = document.getElementById('anatomy-raw-log');
     if (rawLogContainer) {
         let rawText = rawLogContainer.innerHTML;
         
-        // Expressions régulières pour injecter les spans avec classe et data-key
-        const patterns = [
-            { regex: /(\[-\d+\.\d+\/-\d+\.\d+ dBFS\])/g, key: 'radio_power' },
-            { regex: /(\[-?\d+\.\d+ dB\])/g, key: 'radio_snr' },
-            { regex: /(\[-?\d+\.\d+ ppm\])/g, key: 'radio_drift' },
-            { regex: /(type: I)/g, key: 'avlc_type_i' },
-            { regex: /(type: [SU])/g, key: 'avlc_type_s_u' },
-            { regex: /(sseq: \d+)/g, key: 'avlc_sseq' },
-            { regex: /(rseq: \d+)/g, key: 'avlc_rseq' },
-            { regex: /(poll: \d+|P\/F: \d+)/g, key: 'avlc_poll' },
-            { regex: /(grp: \d+ chan: \d+)/g, key: 'x25_lci' },
-            { regex: /(more: \d+)/g, key: 'x25_more' },
-            { regex: /(LRef: [^\s]+)/g, key: 'app_lref' },
-            { regex: /(Lifetime: \d+\.\d+ sec)/g, key: 'app_lifetime' },
-            { regex: /(dst_ref: [^\s]+)/g, key: 'app_dst_ref' },
-            { regex: /(credit: \d+|credit_avail: \d+)/g, key: 'app_credit' }
-        ];
+        // Analyse ligne par ligne pour respecter l'isolation des couches OSI
+        let newLines = rawText.split('\n').map(line => {
+            let modLine = line;
+            if (line.includes('AVLC type:')) {
+                modLine = modLine.replace(/(sseq: \d+)/g, '<span class="anatomy-term" data-key="avlc_sseq">$1</span>');
+                modLine = modLine.replace(/(rseq: \d+)/g, '<span class="anatomy-term" data-key="avlc_rseq">$1</span>');
+                modLine = modLine.replace(/(type: I)/g, '<span class="anatomy-term" data-key="avlc_type_i">$1</span>');
+                modLine = modLine.replace(/(type: [SU])/g, '<span class="anatomy-term" data-key="avlc_type_s_u">$1</span>');
+                modLine = modLine.replace(/(poll: \d+|P\/F: \d+)/g, '<span class="anatomy-term" data-key="avlc_poll">$1</span>');
+            } else if (line.includes('X.25')) {
+                modLine = modLine.replace(/(sseq: \d+)/g, '<span class="anatomy-term" data-key="x25_sseq">$1</span>');
+                modLine = modLine.replace(/(rseq: \d+)/g, '<span class="anatomy-term" data-key="x25_rseq">$1</span>');
+                modLine = modLine.replace(/(grp: \d+ chan: \d+)/g, '<span class="anatomy-term" data-key="x25_lci">$1</span>');
+                modLine = modLine.replace(/(more: \d+)/g, '<span class="anatomy-term" data-key="x25_more">$1</span>');
+            }
+            
+            // Motifs globaux
+            modLine = modLine.replace(/(\[-\d+\.\d+\/-\d+\.\d+ dBFS\])/g, '<span class="anatomy-term" data-key="radio_power">$1</span>');
+            modLine = modLine.replace(/(\[-?\d+\.\d+ dB\])/g, '<span class="anatomy-term" data-key="radio_snr">$1</span>');
+            modLine = modLine.replace(/(\[-?\d+\.\d+ ppm\])/g, '<span class="anatomy-term" data-key="radio_drift">$1</span>');
+            modLine = modLine.replace(/(LRef: [^\s]+)/g, '<span class="anatomy-term" data-key="app_lref">$1</span>');
+            modLine = modLine.replace(/(Lifetime: \d+\.\d+ sec)/g, '<span class="anatomy-term" data-key="app_lifetime">$1</span>');
+            modLine = modLine.replace(/(dst_ref: [^\s]+)/g, '<span class="anatomy-term" data-key="app_dst_ref">$1</span>');
+            modLine = modLine.replace(/(credit: \d+|credit_avail: \d+)/g, '<span class="anatomy-term" data-key="app_credit">$1</span>');
 
-        patterns.forEach(p => {
-            rawText = rawText.replace(p.regex, `<span class="anatomy-term" data-key="${p.key}">$1</span>`);
+            return modLine;
         });
+
+        rawText = newLines.join('\n');
 
         rawLogContainer.innerHTML = rawText;
         const explanationBox = document.getElementById('anatomy-explanation');
@@ -81,8 +91,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 document.querySelectorAll('.anatomy-term').forEach(t => t.classList.remove('active'));
                 term.classList.add('active');
                 const key = term.getAttribute('data-key');
-                if (anatomyExplanations[key]) {
-                    explanationBox.innerHTML = `<p>${anatomyExplanations[key]}</p>`;
+                if (protocolDefinitions[key]) {
+                    explanationBox.innerHTML = `<p>${protocolDefinitions[key]}</p>`;
                 }
             };
             
@@ -144,6 +154,7 @@ document.addEventListener('DOMContentLoaded', () => {
     analyzeBtn.addEventListener('click', () => {
         const rawText = logInput.value;
         allParsedMessages = parseLogs(rawText); // 1. Analyse (parsing) du texte brut
+        analyzeScenario(allParsedMessages); // 2. Moteur de détection de scénarios
         setupFilters(allParsedMessages); // 2. Création et configuration des filtres dynamiques
 
         const container = d3.select("#diagram-container");
@@ -199,6 +210,9 @@ function parseLogs(rawText) {
     // Clé : "srcId->destId", Valeur : { lastSseq: Number }
     // Permet de détecter les retransmissions (même sseq) et les pertes (saut de sseq)
     const avlcStates = new Map();
+
+    // --- Machine d'état X.25 : suivi des compteurs sseq par circuit (Couche 3) ---
+    const x25States = new Map();
 
     // --- Gestionnaire de Sessions X.25 (Circuits Virtuels) ---
     // Clé : "srcId|destId|grp|chan" (normalisée), Valeur : sessionId
@@ -326,7 +340,8 @@ function parseLogs(rawText) {
                 }
             }
 
-            // --- Gestionnaire de Sessions X.25 ---
+            // --- Machine d'état X.25 : détection perte réseau ---
+            let isX25PacketLoss = false;
             let sessionId = null;
 
             if (layers.x25 && layers.x25.grp !== undefined && layers.x25.chan !== undefined) {
@@ -349,6 +364,20 @@ function parseLogs(rawText) {
                 else if (activeX25Sessions.has(sessKey)) {
                     sessionId = activeX25Sessions.get(sessKey);
                 }
+
+                // Vérification spécifique X.25 Data Loss (Network Layer)
+                if (layers.x25.type === 'Data' && layers.x25.sseq !== undefined) {
+                    const dirSessKey = srcId + "->" + destId + "|" + layers.x25.grp + "|" + layers.x25.chan;
+                    const prevX25State = x25States.get(dirSessKey);
+                    
+                    if (prevX25State !== undefined) {
+                        const expectedX25 = (prevX25State + 1) % 8; // Modulo 8 par défaut
+                        if (layers.x25.sseq !== expectedX25 && layers.x25.sseq !== prevX25State) {
+                            isX25PacketLoss = true;
+                        }
+                    }
+                    x25States.set(dirSessKey, layers.x25.sseq);
+                }
             }
 
             // --- Génération intelligente du résumé ---
@@ -368,7 +397,8 @@ function parseLogs(rawText) {
 
             // Préfixes visuels pour les anomalies détectées
             if (isRetransmission) summary = "🔁 RETX | " + summary;
-            if (isPacketLoss) summary = "⚠️ PERTE | " + summary;
+            if (isPacketLoss) summary = "⚠️ PERTE AVLC | " + summary;
+            if (isX25PacketLoss) summary = "⚠️ PERTE X.25 | " + summary;
 
             // --- Détection de Handoff ---
             let isHandoff = false;
@@ -415,6 +445,7 @@ function parseLogs(rawText) {
                 isHandoff,
                 isRetransmission,
                 isPacketLoss,
+                isX25PacketLoss,
                 sessionId,
                 layers,
                 protocolType
@@ -422,6 +453,37 @@ function parseLogs(rawText) {
         }
     });
     return messages;
+}
+
+// ---------------------------------------------------------------------
+// analyzeScenario: Moteur de détection de Scénarios Pédagogiques
+// ---------------------------------------------------------------------
+function analyzeScenario(messagesArray) {
+    messagesArray.forEach(msg => {
+        if (msg.isPacketLoss) {
+            const expected = msg.layers.avlc?.sseq !== undefined ? (msg.layers.avlc.sseq - 1 + 8) % 8 : "X";
+            msg.scenario = {
+                title: "Perte de Paquet Radio (AVLC Packet Loss)",
+                text: `Une perte de trame a été détectée sur la couche liaison. La trame radio numéro ${expected} n'a pas été reçue. Mécanisme de récupération ARQ en cours.`
+            };
+        } else if (msg.isX25PacketLoss) {
+            const expected = msg.layers.x25?.sseq !== undefined ? (msg.layers.x25.sseq - 1 + 8) % 8 : "X";
+            msg.scenario = {
+                title: "Désynchronisation Circuit Virtuel (X.25 Packet Loss)",
+                text: `Une perte de paquet a été détectée au niveau de la Couche Réseau (Circuit X.25). Le paquet numéro ${expected} manque. Cela peut causer un Reset (Réinitialisation) de la connexion.`
+            };
+        } else if (msg.isRetransmission) {
+            msg.scenario = {
+                title: "Retransmission Radio (Timeout)",
+                text: "Le Timer d'acquittement (ex: Timer T4 en VDL2) a expiré au niveau de la Couche Liaison. L'émetteur n'a pas reçu le rseq attendu à temps et retransmet la trame."
+            };
+        } else if (msg.protocolType === "IDRP" && !msg.layers.x25?.cotpDisconnect) {
+            msg.scenario = {
+                title: "Maintien de Session (IDRP Keepalive)",
+                text: "Échange de routine (Keepalive) entre le routeur de bord (Mobile Router) et le routeur sol. Ces battements de cœur maintiennent l'adjacence BGP/IDRP active en l'absence de trafic passager ou contrôle."
+            };
+        }
+    });
 }
 
 // ---------------------------------------------------------------------
@@ -805,6 +867,31 @@ function drawDiagram(messages) {
             .attr("y", y - 10)
             .text(d.summary);
 
+        // Badge Scénario Pédagogique
+        if (d.scenario) {
+            const badgeGroup = g.append("g")
+                .attr("class", "scenario-badge")
+                .attr("transform", `translate(${(x1 + x2) / 2}, ${y - 30})`);
+
+            badgeGroup.append("rect")
+                .attr("x", -60)
+                .attr("y", -11)
+                .attr("width", 120)
+                .attr("height", 16)
+                .attr("rx", 8)
+                .attr("fill", "rgba(56, 189, 248, 0.15)")
+                .attr("stroke", "var(--accent-primary)");
+
+            badgeGroup.append("text")
+                .attr("text-anchor", "middle")
+                .attr("y", 0)
+                .attr("fill", "var(--accent-primary)")
+                .style("font-size", "9px")
+                .style("font-weight", "600")
+                .style("pointer-events", "none")
+                .text("⚠️ Scénario Pédagogique");
+        }
+
         // Heure en-dessous de la flèche
         g.append("text")
             .attr("class", "message-time")
@@ -834,7 +921,8 @@ function showTooltip(d) {
 
     // Flags d'anomalies
     if (d.isRetransmission) enrichedPayload += "🔁 RETRANSMISSION DÉTECTÉE (même sseq AVLC)\n";
-    if (d.isPacketLoss) enrichedPayload += "⚠️ PERTE DE PAQUET DÉTECTÉE (saut de sseq AVLC)\n";
+    if (d.isPacketLoss) enrichedPayload += "⚠️ PERTE DE PAQUET AVLC DÉTECTÉE (saut de sseq Couche Liaison)\n";
+    if (d.isX25PacketLoss) enrichedPayload += "⚠️ PERTE DE PAQUET X.25 DÉTECTÉE (saut de sseq Couche Réseau)\n";
     if (d.isHandoff) enrichedPayload += "🔄 HANDOFF DÉTECTÉ\n";
 
     // Session X.25
@@ -857,9 +945,15 @@ function showTooltip(d) {
         enrichedPayload += "\n";
     }
 
-    enrichedPayload += "\n" + d.payload;
+    if (d.scenario) {
+        enrichedPayload += `\n========================================\n`;
+        enrichedPayload += `🎓 SCÉNARIO DÉTECTÉ: ${d.scenario.title}\n`;
+        enrichedPayload += `========================================\n`;
+        // Format text to avoid long lines
+        enrichedPayload += `${d.scenario.text}\n`;
+    }
 
-    document.getElementById("tt-payload").textContent = enrichedPayload;
+    document.getElementById("tt-payload").textContent = enrichedPayload + "\n" + d.payload;
 
     tt.classList.remove("hidden");
 }
