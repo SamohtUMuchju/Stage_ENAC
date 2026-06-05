@@ -31,22 +31,102 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Base de Connaissances (Dictionnaire de données) ---
     const protocolDefinitions = {
-        'radio_power': "<strong>[Couche Physique / SDR] Puissance</strong><br><br>Puissance du signal reçu / Plancher de bruit de fond (dBFS).",
-        'radio_snr': "<strong>[Couche Physique / SDR] SNR</strong><br><br>SNR (Signal to Noise Ratio). Ratio critique pour la qualité du signal. Sous un certain seuil, le FEC (Forward Error Correction) ne peut plus compenser et la trame est perdue.",
-        'radio_drift': "<strong>[Couche Physique / SDR] Dérive</strong><br><br>Dérive de l'oscillateur. Mesure le décalage de fréquence de l'horloge de l'émetteur.",
-        'avlc_type_i': "<strong>[AVLC] Trame d'Information</strong><br><br>Transfère de la donnée utile.",
-        'avlc_type_s_u': "<strong>[AVLC] Trame de Contrôle</strong><br><br>Trame Supervisory (ex: accusé de réception pur) ou Unnumbered (ex: XID pour négociation de connexion).",
-        'avlc_sseq': "<strong>[AVLC] Send Sequence (sseq)</strong><br><br>Numéro de séquence de la trame de Couche Liaison envoyée (Modulo 8). Permet le ré-ordonnancement radio.",
-        'avlc_rseq': "<strong>[AVLC] Receive Sequence (rseq)</strong><br><br>Acquittement implicite (Piggybacking) au niveau liaison. Indique le numéro de la <em>prochaine</em> trame radio attendue. La réception d'un rseq = N valide de manière cumulative toutes les trames jusqu'à N-1 inclus.",
-        'x25_sseq': "<strong>[X.25] Packet Send Sequence (sseq)</strong><br><br>Numéro de séquence du paquet Réseau (Modulo 8 par défaut, ou 128). Suit l'acheminement de bout en bout sur le circuit virtuel.",
-        'x25_rseq': "<strong>[X.25] Packet Receive Sequence (rseq)</strong><br><br>Acquittement au niveau Réseau. Valide la réception des paquets X.25 précédents sur ce circuit virtuel spécifique.",
-        'avlc_poll': "<strong>[AVLC] Bit P/F (Poll/Final)</strong><br><br>Différencie une commande d'une réponse. S'il est à 1 sur une Commande (Poll), l'émetteur exige une réponse immédiate de la station réceptrice. S'il est à 1 sur une Réponse (Final), il indique que la station a terminé de répondre.",
-        'x25_lci': "<strong>[X.25] LCI (Logical Channel Identifier)</strong><br><br>Identifiant de Couche 3 (Réseau) calculé par grp * 256 + chan. Il définit de manière unique le circuit virtuel ouvert entre les deux routeurs.",
-        'x25_more': "<strong>[X.25] Bit M (More Data)</strong><br><br>Fragmentation de la Couche Réseau (ISO 8208). Indique qu'un message de niveau supérieur (ex: PDU COTP) dépasse la taille maximale du paquet négociée pour ce circuit X.25, et se poursuit dans le paquet suivant.",
-        'app_lref': "<strong>[SNDCF] Local Reference</strong><br><br>Pour économiser de la bande passante VHF, les longues adresses OACI réseau (NSAP) sont remplacées par ce petit identifiant local après la négociation initiale.",
-        'app_lifetime': "<strong>[CLNP] Lifetime</strong><br><br>L'équivalent du TTL (Time To Live). Durée de vie restante du paquet en secondes avant qu'un routeur de l'ATN ne le détruise.",
-        'app_dst_ref': "<strong>[COTP X.224] Destination Reference</strong><br><br>Identifiant unique de la connexion de transport de bout en bout (Couche 4).",
-        'app_credit': "<strong>[IDRP / COTP] Credit</strong><br><br>Mécanisme de contrôle de flux. Repose sur le concept de fenêtre d'anticipation (Sliding Window) : indique combien de paquets le récepteur a l'espace mémoire d'accepter sans engorger ses tampons (buffers)."
+        'radio_power': {
+            title: "[Couche Physique / SDR] Puissance",
+            definition: "Puissance du signal reçu / Plancher de bruit de fond (dBFS).",
+            nominal: "Valeur attendue pour une réception claire (ex: -70 à -90 dBm).",
+            error: "Signal trop faible (ex: <-100 dBm) entraînant des erreurs de décodage, ou saturation si trop fort."
+        },
+        'radio_snr': {
+            title: "[Couche Physique / SDR] SNR",
+            definition: "SNR (Signal to Noise Ratio). Ratio critique pour la qualité du signal.",
+            nominal: "Valeur positive et stable (ex: > 10 dB). Le FEC (Forward Error Correction) corrige facilement les erreurs mineures.",
+            error: "Valeur négative ou chute brutale. Les trames seront rejetées par la couche physique, provoquant des silences radio et forçant les retransmissions AVLC."
+        },
+        'radio_drift': {
+            title: "[Couche Physique / SDR] Dérive",
+            definition: "Dérive de l'oscillateur. Mesure le décalage de fréquence de l'horloge de l'émetteur.",
+            nominal: "Dérive proche de 0 ppm, assurant une parfaite synchronisation entre émetteur et récepteur.",
+            error: "Dérive excessive (ex: > 2 ppm) pouvant causer des pertes de synchronisation et des rejets de trames au niveau physique."
+        },
+        'avlc_type_i': {
+            title: "[AVLC] Trame d'Information",
+            definition: "Transfère de la donnée utile.",
+            nominal: "Transmission régulière et acquittée, encapsulant les paquets X.25.",
+            error: "Trop de retransmissions de trames I indique une liaison VHF instable ou congestionnée."
+        },
+        'avlc_type_s_u': {
+            title: "[AVLC] Trame de Contrôle",
+            definition: "Trame Supervisory (ex: accusé de réception pur) ou Unnumbered (ex: XID pour négociation de connexion).",
+            nominal: "Utilisation efficace pour acquitter (RR) ou gérer les états de la liaison sans polluer le canal.",
+            error: "Trames de rejet (REJ) fréquentes indiquent des pertes. Un échange XID non abouti empêche la connexion."
+        },
+        'avlc_sseq': {
+            title: "[AVLC] Send Sequence (sseq)",
+            definition: "Numéro de séquence de la trame de Couche Liaison envoyée (Modulo 8). Permet le ré-ordonnancement radio.",
+            nominal: "sseq s'incrémente de 1 à chaque trame (modulo 8). rseq acquitte (piggybacking) en demandant le numéro suivant, confirmant une réception fluide.",
+            error: "Un saut dans les sseq indique une trame écrasée en l'air (collision). La répétition d'un même sseq indique que le Timer (ex: T4) a expiré car le rseq attendu n'est jamais revenu."
+        },
+        'avlc_rseq': {
+            title: "[AVLC] Receive Sequence (rseq)",
+            definition: "Acquittement implicite (Piggybacking) au niveau liaison. Indique le numéro de la prochaine trame radio attendue.",
+            nominal: "S'incrémente de manière fluide, validant de manière cumulative toutes les trames jusqu'à N-1 inclus.",
+            error: "Un rseq qui stagne (ou un Supervisory REJ) force la station distante à retransmettre une fenêtre entière de trames."
+        },
+        'x25_sseq': {
+            title: "[X.25] Packet Send Sequence (sseq)",
+            definition: "Numéro de séquence du paquet Réseau (Modulo 8 par défaut, ou 128). Suit l'acheminement de bout en bout sur le circuit virtuel.",
+            nominal: "Incrémentation séquentielle synchronisée avec le récepteur sur ce circuit virtuel spécifique.",
+            error: "Désynchronisation des compteurs causant un X.25 Reset, réinitialisant les compteurs à 0 et potentiellement perdant des paquets en transit."
+        },
+        'x25_rseq': {
+            title: "[X.25] Packet Receive Sequence (rseq)",
+            definition: "Acquittement au niveau Réseau. Valide la réception des paquets X.25 précédents sur ce circuit virtuel spécifique.",
+            nominal: "Acquittement fluide permettant à la fenêtre de transmission (Window Size) d'avancer.",
+            error: "Si le rseq n'est pas reçu à temps, le circuit est bloqué (Flow Control) puis potentiellement coupé (Clear Request)."
+        },
+        'avlc_poll': {
+            title: "[AVLC] Bit P/F (Poll/Final)",
+            definition: "Différencie une commande d'une réponse. S'il est à 1 sur une Commande (Poll), l'émetteur exige une réponse immédiate de la station réceptrice. S'il est à 1 sur une Réponse (Final), il indique que la station a terminé de répondre.",
+            nominal: "Généralement à 0 pour le trafic de données. À 1 uniquement si l'émetteur exige un acquittement immédiat (Supervisory frame).",
+            error: "Si une trame avec P=1 est envoyée mais qu'aucune réponse avec F=1 n'est reçue avant l'expiration du délai, la liaison risque d'être déclarée rompue."
+        },
+        'x25_lci': {
+            title: "[X.25] LCI (Logical Channel Identifier)",
+            definition: "Identifiant de Couche 3 (Réseau) calculé par grp * 256 + chan. Il définit de manière unique le circuit virtuel ouvert entre les deux routeurs.",
+            nominal: "Assigné lors du Call Request, reste constant et unique pour la durée de l'échange.",
+            error: "Collision de LCI si deux entités tentent d'ouvrir le même circuit, ou trame reçue sur un LCI non assigné (provoquant un Clear)."
+        },
+        'x25_more': {
+            title: "[X.25] Bit M (More Data)",
+            definition: "Fragmentation de la Couche Réseau (ISO 8208). Indique qu'un message de niveau supérieur (ex: PDU COTP) dépasse la taille maximale du paquet négociée pour ce circuit X.25, et se poursuit dans le paquet suivant.",
+            nominal: "Bit M=1 pour les fragments intermédiaires, et M=0 pour le dernier fragment. Le récepteur réassemble le tout de manière transparente.",
+            error: "Perte d'un fragment avec M=1 corrompt l'intégralité du message supérieur. Le récepteur doit rejeter toute la séquence réassemblée."
+        },
+        'app_lref': {
+            title: "[SNDCF] Local Reference",
+            definition: "Pour économiser de la bande passante VHF, les longues adresses OACI réseau (NSAP) sont remplacées par ce petit identifiant local après la négociation initiale.",
+            nominal: "Mapping réussi via XID. Les adresses longues de 20 octets sont remplacées par une LRef d'un octet.",
+            error: "Échec de résolution SNDCF. Oblige les stations à envoyer les adresses NSAP complètes, saturant rapidement le canal VDL2."
+        },
+        'app_lifetime': {
+            title: "[CLNP] Lifetime",
+            definition: "L'équivalent du TTL (Time To Live). Durée de vie restante du paquet en secondes avant qu'un routeur de l'ATN ne le détruise.",
+            nominal: "Valeur suffisante pour atteindre la destination, décrémentée par chaque routeur traversé.",
+            error: "Expiré en transit (Atteint 0). Le paquet est droppé par le routeur, générant potentiellement un Error Report de la couche réseau."
+        },
+        'app_dst_ref': {
+            title: "[COTP X.224] Destination Reference",
+            definition: "Identifiant unique de la connexion de transport de bout en bout (Couche 4).",
+            nominal: "Identifie de manière fiable la session de transport, permettant le multiplexage de plusieurs applications.",
+            error: "Réception d'un paquet COTP avec une référence inconnue, entraînant un Error PDU ou une fermeture de connexion."
+        },
+        'app_credit': {
+            title: "[IDRP / COTP] Credit",
+            definition: "Mécanisme de contrôle de flux. Repose sur le concept de fenêtre d'anticipation (Sliding Window) : indique combien de paquets le récepteur a l'espace mémoire d'accepter sans engorger ses tampons (buffers).",
+            nominal: "Crédit > 0 maintenu dynamiquement. L'émetteur envoie à plein débit, et le récepteur accorde de nouveaux crédits au fur et à mesure.",
+            error: "Crédit = 0 (Window Closed). L'émetteur est bloqué et ne peut plus rien envoyer. S'il force l'envoi, les paquets seront ignorés par le récepteur."
+        }
     };
 
     const rawLogContainer = document.getElementById('anatomy-raw-log');
@@ -92,7 +172,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 term.classList.add('active');
                 const key = term.getAttribute('data-key');
                 if (protocolDefinitions[key]) {
-                    explanationBox.innerHTML = `<p>${protocolDefinitions[key]}</p>`;
+                    const def = protocolDefinitions[key];
+                    explanationBox.innerHTML = `
+                        <h4>${def.title}</h4>
+                        <p>${def.definition}</p>
+                        <div class="scenario nominal" style="margin-top: 10px;">
+                            <strong>✅ Scénario Nominal :</strong> ${def.nominal}
+                        </div>
+                        <div class="scenario error" style="margin-top: 10px; color: #f85149;">
+                            <strong>⚠️ Scénario d'Erreur :</strong> ${def.error}
+                        </div>
+                    `;
                 }
             };
             
@@ -191,6 +281,81 @@ document.addEventListener('DOMContentLoaded', () => {
     if (logInput.value.trim() !== '') {
         analyzeBtn.click();
     }
+
+    // --- Drag & Drop Logic ---
+    const dropZone = document.getElementById('drop-zone');
+    let dragCounter = 0;
+
+    document.addEventListener('dragenter', (e) => {
+        if (e.dataTransfer && e.dataTransfer.types && Array.from(e.dataTransfer.types).includes("Files")) {
+            e.preventDefault();
+            dragCounter++;
+            if (dropZone) dropZone.classList.remove('hidden');
+        }
+    });
+
+    document.addEventListener('dragover', (e) => {
+        if (e.dataTransfer && e.dataTransfer.types && Array.from(e.dataTransfer.types).includes("Files")) {
+            e.preventDefault(); // Nécessaire pour autoriser le drop
+        }
+    });
+
+    document.addEventListener('dragleave', (e) => {
+        if (dragCounter > 0) {
+            dragCounter--;
+            if (dragCounter === 0) {
+                // L'utilisateur quitte la fenêtre, on recache la zone
+                if (dropZone) dropZone.classList.add('hidden');
+            }
+        }
+    });
+
+    if (dropZone) {
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('dragover');
+        });
+
+        dropZone.addEventListener('dragleave', (e) => {
+            dropZone.classList.remove('dragover');
+        });
+    }
+
+    document.addEventListener('drop', (e) => {
+        if (!e.dataTransfer || !e.dataTransfer.types || !Array.from(e.dataTransfer.types).includes("Files")) {
+            return;
+        }
+        
+        e.preventDefault();
+        dragCounter = 0;
+        if (dropZone) dropZone.classList.remove('dragover');
+        
+        if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+            const file = e.dataTransfer.files[0];
+            const reader = new FileReader();
+            
+            reader.onload = (event) => {
+                const text = event.target.result;
+                
+                // Masquer la zone de drop
+                if (dropZone) dropZone.classList.add('hidden');
+                
+                // Mettre à jour l'input texte
+                logInput.value = text;
+                
+                // Purge / Réinitialisation des états internes (currentActiveEntityId etc.)
+                currentActiveEntityId = null;
+                allParsedMessages = [];
+                
+                // Lancer l'analyse complète (qui gère déjà le nettoyage du DOM et des filtres)
+                analyzeBtn.click();
+            };
+            
+            reader.readAsText(file);
+        } else {
+            if (dropZone) dropZone.classList.add('hidden');
+        }
+    });
 });
 
 // =====================================================================
@@ -406,8 +571,8 @@ function parseLogs(rawText) {
 
             const isSrcAc = srcDesc.toLowerCase().includes("aircraft");
             const isDestAc = destDesc.toLowerCase().includes("aircraft");
-            const isSrcGs = srcDesc.toLowerCase().includes("ground");
-            const isDestGs = destDesc.toLowerCase().includes("ground");
+            const isSrcGs = srcDesc.toLowerCase().includes("ground") && !srcDesc.toLowerCase().includes("aircraft");
+            const isDestGs = destDesc.toLowerCase().includes("ground") && !destDesc.toLowerCase().includes("aircraft");
 
             let acId = null;
             let gsId = null;
@@ -538,8 +703,8 @@ function setupFilters(messages) {
         return keys.sort((a, b) => {
             const descA = entities.get(a).toLowerCase();
             const descB = entities.get(b).toLowerCase();
-            const isGroundA = descA.includes('ground');
-            const isGroundB = descB.includes('ground');
+            const isGroundA = descA.includes('ground') && !descA.includes('aircraft');
+            const isGroundB = descB.includes('ground') && !descB.includes('aircraft');
             if (isGroundA && !isGroundB) return -1;
             if (!isGroundA && isGroundB) return 1;
             return a.localeCompare(b);
@@ -555,7 +720,7 @@ function setupFilters(messages) {
 
         entityList.forEach(id => {
             const desc = entities.get(id);
-            const isGround = desc.toLowerCase().includes('ground');
+            const isGround = desc.toLowerCase().includes('ground') && !desc.toLowerCase().includes('aircraft');
             const stats = entityStats.get(id);
 
             const btn = document.createElement('button');
@@ -639,8 +804,8 @@ function drawDiagram(messages) {
     const entityList = Array.from(entities.keys()).sort((a, b) => {
         const descA = entities.get(a).toLowerCase();
         const descB = entities.get(b).toLowerCase();
-        const isGroundA = descA.includes('ground');
-        const isGroundB = descB.includes('ground');
+        const isGroundA = descA.includes('ground') && !descA.includes('aircraft');
+        const isGroundB = descB.includes('ground') && !descB.includes('aircraft');
         if (isGroundA && !isGroundB) return -1;
         if (!isGroundA && isGroundB) return 1;
         return a.localeCompare(b);
@@ -650,36 +815,36 @@ function drawDiagram(messages) {
     const margin = { top: 60, right: 100, bottom: 60, left: 100 };
     const entityWidth = 180;
     const width = Math.max(container.node().getBoundingClientRect().width, entityList.length * entityWidth + margin.left + margin.right);
-    const msgHeight = 65;
+    const msgHeight = 90;
     const height = margin.top + messages.length * msgHeight + margin.bottom;
 
     const svg = container.append("svg")
         .attr("id", "sequence-diagram-svg")
         .attr("width", width)
         .attr("height", height)
-        .style("background-color", "#0f172a");
+        .style("background-color", "#0d1117");
 
     // CSS inline pour l'export JPG fidèle
     svg.append("style").text(`
-        .lifeline-line { stroke: rgba(255, 255, 255, 0.1); stroke-width: 1.5px; stroke-dasharray: 6 4; }
-        .lifeline-rect { fill: #1e293b; stroke: rgba(255, 255, 255, 0.1); stroke-width: 1px; rx: 4px; }
-        .lifeline-text { fill: #f8fafc; font-size: 12px; font-weight: 500; text-anchor: middle; font-family: 'Inter', sans-serif; }
-        .lifeline-subtext { fill: #94a3b8; font-size: 10px; text-anchor: middle; font-family: 'Inter', sans-serif; }
-        .message-line { stroke: #94a3b8; stroke-width: 1.5px; }
-        .message-arrow { fill: #94a3b8; }
-        .handoff-line { stroke: #f59e0b; stroke-width: 2px; stroke-dasharray: 4; }
-        .handoff-arrow { fill: #f59e0b; }
-        .retransmission-line { stroke: #fb923c; stroke-width: 2px; stroke-dasharray: 6 3; }
-        .retransmission-arrow { fill: #fb923c; }
-        .packet-loss-line { stroke: #ef4444; stroke-width: 2.5px; }
-        .packet-loss-arrow { fill: #ef4444; }
-        .message-text { fill: #94a3b8; font-size: 11px; text-anchor: middle; font-family: 'Inter', sans-serif; }
-        .message-time { fill: #64748b; font-size: 10px; font-family: 'JetBrains Mono', monospace; }
-        .broadcast-wave { fill: none; stroke: #818cf8; stroke-width: 1.5px; opacity: 0.6; }
-        .broadcast-text { fill: #818cf8; font-size: 10px; font-style: italic; font-family: 'Inter', sans-serif; }
-        .session-bg { fill: rgba(56, 189, 248, 0.04); stroke: rgba(56, 189, 248, 0.15); stroke-width: 1px; rx: 6px; }
-        .session-label { fill: rgba(56, 189, 248, 0.5); font-size: 9px; font-family: 'JetBrains Mono', monospace; }
-        .alert-icon { fill: #ef4444; font-size: 14px; font-family: sans-serif; }
+        .lifeline-line { stroke: #30363d; stroke-width: 1.5px; stroke-dasharray: 6 4; }
+        .lifeline-rect { fill: #161b22; stroke: #30363d; stroke-width: 1px; rx: 4px; }
+        .lifeline-text { fill: #e6edf3; font-size: 12px; font-weight: 500; text-anchor: middle; font-family: 'Inter', sans-serif; }
+        .lifeline-subtext { fill: #8b949e; font-size: 10px; text-anchor: middle; font-family: 'Inter', sans-serif; }
+        .message-line { stroke: #8b949e; stroke-width: 1.5px; }
+        .message-arrow { fill: #8b949e; }
+        .handoff-line { stroke: #d29922; stroke-width: 2px; stroke-dasharray: 4; }
+        .handoff-arrow { fill: #d29922; }
+        .retransmission-line { stroke: #d29922; stroke-width: 2px; stroke-dasharray: 6 3; }
+        .retransmission-arrow { fill: #d29922; }
+        .packet-loss-line { stroke: #f85149; stroke-width: 2.5px; }
+        .packet-loss-arrow { fill: #f85149; }
+        .message-text { fill: #e6edf3; font-size: 11px; text-anchor: middle; font-family: 'Inter', sans-serif; }
+        .message-time { fill: #8b949e; font-size: 10px; font-family: 'JetBrains Mono', monospace; }
+        .broadcast-wave { fill: none; stroke: #2f81f7; stroke-width: 1.5px; opacity: 0.6; }
+        .broadcast-text { fill: #2f81f7; font-size: 10px; font-style: italic; font-family: 'Inter', sans-serif; }
+        .session-bg { fill: rgba(47, 129, 247, 0.05); stroke: #30363d; stroke-width: 1px; rx: 6px; }
+        .session-label { fill: #8b949e; font-size: 9px; font-family: 'JetBrains Mono', monospace; }
+        .alert-icon { fill: #f85149; font-size: 14px; font-family: sans-serif; }
     `);
 
     // Échelle X
@@ -708,7 +873,10 @@ function drawDiagram(messages) {
         .attr("class", "lifeline-rect")
         .attr("x", -70).attr("y", -20)
         .attr("width", 140).attr("height", 44)
-        .style("stroke", d => entities.get(d).toLowerCase().includes("ground") ? "#10b981" : "#f59e0b");
+        .style("stroke", d => {
+            const desc = entities.get(d).toLowerCase();
+            return (desc.includes("ground") && !desc.includes("aircraft")) ? "#2f81f7" : "#d29922";
+        });
 
     headerGroup.append("text")
         .attr("class", "lifeline-text")
@@ -721,7 +889,7 @@ function drawDiagram(messages) {
         .text(d => {
             const desc = entities.get(d).toLowerCase();
             let text = "";
-            if (desc.includes("ground")) text = "Ground Station";
+            if (desc.includes("ground") && !desc.includes("aircraft")) text = "Ground Station";
             else if (desc.includes("aircraft")) text = "Aircraft";
             else text = "Unknown";
             if (desc.includes("airborne")) text += " ✈️ (Airborne)";
@@ -834,6 +1002,39 @@ function drawDiagram(messages) {
             arrowClass = "message-arrow packet-loss-arrow";
         }
 
+        // --- Séparateur Visuel Handoff ---
+        if (d.isHandoff) {
+            const sepY = y - 62;
+            g.append("line")
+                .attr("x1", margin.left)
+                .attr("y1", sepY)
+                .attr("x2", width - margin.right)
+                .attr("y2", sepY)
+                .style("stroke", "#d29922")
+                .style("stroke-width", "1.5px")
+                .style("stroke-dasharray", "8 4");
+
+            g.append("rect")
+                .attr("x", width / 2 - 70)
+                .attr("y", sepY - 9)
+                .attr("width", 140)
+                .attr("height", 18)
+                .attr("rx", 4)
+                .style("fill", "#0d1117")
+                .style("stroke", "#d29922")
+                .style("stroke-width", "1px");
+
+            g.append("text")
+                .attr("x", width / 2)
+                .attr("y", sepY + 4)
+                .attr("text-anchor", "middle")
+                .style("fill", "#d29922")
+                .style("font-size", "10px")
+                .style("font-weight", "bold")
+                .style("font-family", "sans-serif")
+                .text("[HANDOVER DETECTED]");
+        }
+
         // Ligne de la flèche
         g.append("line")
             .attr("class", lineClass)
@@ -855,7 +1056,7 @@ function drawDiagram(messages) {
             g.append("text")
                 .attr("class", "alert-icon")
                 .attr("x", (x1 + x2) / 2)
-                .attr("y", y - 22)
+                .attr("y", y - 24)
                 .attr("text-anchor", "middle")
                 .text("⚠");
         }
@@ -871,7 +1072,7 @@ function drawDiagram(messages) {
         if (d.scenario) {
             const badgeGroup = g.append("g")
                 .attr("class", "scenario-badge")
-                .attr("transform", `translate(${(x1 + x2) / 2}, ${y - 30})`);
+                .attr("transform", `translate(${(x1 + x2) / 2}, ${y - 42})`);
 
             badgeGroup.append("rect")
                 .attr("x", -60)
@@ -879,13 +1080,13 @@ function drawDiagram(messages) {
                 .attr("width", 120)
                 .attr("height", 16)
                 .attr("rx", 8)
-                .attr("fill", "rgba(56, 189, 248, 0.15)")
-                .attr("stroke", "var(--accent-primary)");
+                .attr("fill", "#161b22")
+                .attr("stroke", "#30363d");
 
             badgeGroup.append("text")
                 .attr("text-anchor", "middle")
                 .attr("y", 0)
-                .attr("fill", "var(--accent-primary)")
+                .attr("fill", "#8b949e")
                 .style("font-size", "9px")
                 .style("font-weight", "600")
                 .style("pointer-events", "none")
