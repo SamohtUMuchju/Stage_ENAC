@@ -1,6 +1,8 @@
 // Variables globales pour stocker l'état
 let allParsedMessages = [];
 let currentActiveEntityId = null;
+let map = null;
+let currentTileLayer = null;
 
 document.addEventListener('DOMContentLoaded', () => {
     // Récupération des éléments principaux de l'interface utilisateur
@@ -11,6 +13,90 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Fixation du tooltip pour qu'il agisse comme une fenêtre modale centrée sur l'écran
     tooltip.style.position = 'fixed';
+
+    // --- Initialisation de la Carte Leaflet ---
+    initMap();
+
+    // --- Theme Toggle Logic ---
+    const themeToggleBtn = document.getElementById('theme-toggle-btn');
+    const themeIconMoon = document.getElementById('theme-icon-moon');
+    const themeIconSun = document.getElementById('theme-icon-sun');
+    
+    if (themeToggleBtn) {
+        const currentTheme = localStorage.getItem('theme') || 'light';
+        if (currentTheme === 'dark') {
+            document.documentElement.setAttribute('data-theme', 'dark');
+            if (themeIconSun) themeIconSun.classList.add('hidden');
+            if (themeIconMoon) themeIconMoon.classList.remove('hidden');
+        } else {
+            document.documentElement.removeAttribute('data-theme');
+            if (themeIconMoon) themeIconMoon.classList.add('hidden');
+            if (themeIconSun) themeIconSun.classList.remove('hidden');
+        }
+
+        themeToggleBtn.addEventListener('click', () => {
+            let theme = document.documentElement.getAttribute('data-theme');
+            if (theme === 'dark') {
+                document.documentElement.removeAttribute('data-theme');
+                localStorage.setItem('theme', 'light');
+                if (themeIconMoon) themeIconMoon.classList.add('hidden');
+                if (themeIconSun) themeIconSun.classList.remove('hidden');
+                updateMapTheme('light');
+            } else {
+                document.documentElement.setAttribute('data-theme', 'dark');
+                localStorage.setItem('theme', 'dark');
+                if (themeIconSun) themeIconSun.classList.add('hidden');
+                if (themeIconMoon) themeIconMoon.classList.remove('hidden');
+                updateMapTheme('dark');
+            }
+        });
+    }
+
+    // --- Logique du Bouton Toggle Vue ---
+    const toggleViewBtn = document.getElementById('toggle-view-btn');
+    const diagramContainerElem = document.getElementById('diagram-container');
+    const mapContainerElem = document.getElementById('map-container');
+    const filterContainerElem = document.getElementById('filter-container');
+    let isMapView = false;
+
+    if (toggleViewBtn) {
+        toggleViewBtn.addEventListener('click', () => {
+            isMapView = !isMapView;
+            if (isMapView) {
+                diagramContainerElem.classList.add('hidden');
+                filterContainerElem.classList.add('hidden');
+                mapContainerElem.classList.remove('hidden');
+                toggleViewBtn.innerHTML = `
+                    <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="18" y1="20" x2="18" y2="10"></line>
+                        <line x1="12" y1="20" x2="12" y2="4"></line>
+                        <line x1="6" y1="20" x2="6" y2="14"></line>
+                    </svg>
+                    Vue Diagramme
+                `;
+                // Crucial for Leaflet when changing display from none to block
+                if (map) {
+                    map.invalidateSize();
+                }
+            } else {
+                mapContainerElem.classList.add('hidden');
+                diagramContainerElem.classList.remove('hidden');
+                if (allParsedMessages.length > 0) {
+                    filterContainerElem.classList.remove('hidden');
+                }
+                toggleViewBtn.innerHTML = `
+                    <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"></polygon>
+                        <line x1="8" y1="2" x2="8" y2="18"></line>
+                        <line x1="16" y1="6" x2="16" y2="22"></line>
+                    </svg>
+                    Vue Carte
+                `;
+            }
+        });
+    }
 
     // --- Ajout Logique Onglets (Tabs) ---
     const tabBtns = document.querySelectorAll('.tab-btn');
@@ -246,6 +332,7 @@ document.addEventListener('DOMContentLoaded', () => {
         allParsedMessages = parseLogs(rawText); // 1. Analyse (parsing) du texte brut
         analyzeScenario(allParsedMessages); // 2. Moteur de détection de scénarios
         setupFilters(allParsedMessages); // 2. Création et configuration des filtres dynamiques
+        renderWiresharkView(allParsedMessages); // 3. Rendu de la vue Wireshark
 
         const container = d3.select("#diagram-container");
         container.selectAll("*").remove(); // Nettoie complètement l'ancien diagramme (s'il existe)
@@ -822,29 +909,29 @@ function drawDiagram(messages) {
         .attr("id", "sequence-diagram-svg")
         .attr("width", width)
         .attr("height", height)
-        .style("background-color", "#0d1117");
+        .style("background-color", "var(--bg-primary)");
 
     // CSS inline pour l'export JPG fidèle
     svg.append("style").text(`
-        .lifeline-line { stroke: #30363d; stroke-width: 1.5px; stroke-dasharray: 6 4; }
-        .lifeline-rect { fill: #161b22; stroke: #30363d; stroke-width: 1px; rx: 4px; }
-        .lifeline-text { fill: #e6edf3; font-size: 12px; font-weight: 500; text-anchor: middle; font-family: 'Inter', sans-serif; }
-        .lifeline-subtext { fill: #8b949e; font-size: 10px; text-anchor: middle; font-family: 'Inter', sans-serif; }
-        .message-line { stroke: #8b949e; stroke-width: 1.5px; }
-        .message-arrow { fill: #8b949e; }
-        .handoff-line { stroke: #d29922; stroke-width: 2px; stroke-dasharray: 4; }
-        .handoff-arrow { fill: #d29922; }
-        .retransmission-line { stroke: #d29922; stroke-width: 2px; stroke-dasharray: 6 3; }
-        .retransmission-arrow { fill: #d29922; }
-        .packet-loss-line { stroke: #f85149; stroke-width: 2.5px; }
-        .packet-loss-arrow { fill: #f85149; }
-        .message-text { fill: #e6edf3; font-size: 11px; text-anchor: middle; font-family: 'Inter', sans-serif; }
-        .message-time { fill: #8b949e; font-size: 10px; font-family: 'JetBrains Mono', monospace; }
-        .broadcast-wave { fill: none; stroke: #2f81f7; stroke-width: 1.5px; opacity: 0.6; }
-        .broadcast-text { fill: #2f81f7; font-size: 10px; font-style: italic; font-family: 'Inter', sans-serif; }
-        .session-bg { fill: rgba(47, 129, 247, 0.05); stroke: #30363d; stroke-width: 1px; rx: 6px; }
-        .session-label { fill: #8b949e; font-size: 9px; font-family: 'JetBrains Mono', monospace; }
-        .alert-icon { fill: #f85149; font-size: 14px; font-family: sans-serif; }
+        .lifeline-line { stroke: var(--border-color); stroke-width: 1.5px; stroke-dasharray: 6 4; }
+        .lifeline-rect { fill: var(--bg-panel); stroke: var(--border-color); stroke-width: 1px; rx: 4px; }
+        .lifeline-text { fill: var(--text-primary); font-size: 12px; font-weight: 500; text-anchor: middle; font-family: 'Inter', sans-serif; }
+        .lifeline-subtext { fill: var(--text-secondary); font-size: 10px; text-anchor: middle; font-family: 'Inter', sans-serif; }
+        .message-line { stroke: var(--text-secondary); stroke-width: 1.5px; }
+        .message-arrow { fill: var(--text-secondary); }
+        .handoff-line { stroke: var(--accent-aircraft); stroke-width: 2px; stroke-dasharray: 4; }
+        .handoff-arrow { fill: var(--accent-aircraft); }
+        .retransmission-line { stroke: var(--color-warning); stroke-width: 2px; stroke-dasharray: 6 3; }
+        .retransmission-arrow { fill: var(--color-warning); }
+        .packet-loss-line { stroke: var(--color-error); stroke-width: 2.5px; }
+        .packet-loss-arrow { fill: var(--color-error); }
+        .message-text { fill: var(--text-primary); font-size: 11px; text-anchor: middle; font-family: 'Inter', sans-serif; }
+        .message-time { fill: var(--text-secondary); font-size: 10px; font-family: 'JetBrains Mono', monospace; }
+        .broadcast-wave { fill: none; stroke: var(--accent-primary); stroke-width: 1.5px; opacity: 0.6; }
+        .broadcast-text { fill: var(--accent-primary); font-size: 10px; font-style: italic; font-family: 'Inter', sans-serif; }
+        .session-bg { fill: var(--filter-bg); stroke: var(--border-color); stroke-width: 1px; rx: 6px; }
+        .session-label { fill: var(--text-secondary); font-size: 9px; font-family: 'JetBrains Mono', monospace; }
+        .alert-icon { fill: var(--color-error); font-size: 14px; font-family: sans-serif; }
     `);
 
     // Échelle X
@@ -875,7 +962,7 @@ function drawDiagram(messages) {
         .attr("width", 140).attr("height", 44)
         .style("stroke", d => {
             const desc = entities.get(d).toLowerCase();
-            return (desc.includes("ground") && !desc.includes("aircraft")) ? "#2f81f7" : "#d29922";
+            return (desc.includes("ground") && !desc.includes("aircraft")) ? "var(--accent-ground)" : "var(--accent-aircraft)";
         });
 
     headerGroup.append("text")
@@ -961,7 +1048,7 @@ function drawDiagram(messages) {
                 .attr("class", "message-line")
                 .attr("x1", x1 + 4).attr("y1", y)
                 .attr("x2", waveX).attr("y2", y)
-                .style("stroke", "#818cf8")
+                .style("stroke", "var(--accent-primary)")
                 .style("stroke-dasharray", "3 2");
 
             g.append("text")
@@ -1010,7 +1097,7 @@ function drawDiagram(messages) {
                 .attr("y1", sepY)
                 .attr("x2", width - margin.right)
                 .attr("y2", sepY)
-                .style("stroke", "#d29922")
+                .style("stroke", "var(--accent-aircraft)")
                 .style("stroke-width", "1.5px")
                 .style("stroke-dasharray", "8 4");
 
@@ -1020,15 +1107,15 @@ function drawDiagram(messages) {
                 .attr("width", 140)
                 .attr("height", 18)
                 .attr("rx", 4)
-                .style("fill", "#0d1117")
-                .style("stroke", "#d29922")
+                .style("fill", "var(--bg-primary)")
+                .style("stroke", "var(--accent-aircraft)")
                 .style("stroke-width", "1px");
 
             g.append("text")
                 .attr("x", width / 2)
                 .attr("y", sepY + 4)
                 .attr("text-anchor", "middle")
-                .style("fill", "#d29922")
+                .style("fill", "var(--accent-aircraft)")
                 .style("font-size", "10px")
                 .style("font-weight", "bold")
                 .style("font-family", "sans-serif")
@@ -1080,13 +1167,13 @@ function drawDiagram(messages) {
                 .attr("width", 120)
                 .attr("height", 16)
                 .attr("rx", 8)
-                .attr("fill", "#161b22")
-                .attr("stroke", "#30363d");
+                .attr("fill", "var(--bg-panel)")
+                .attr("stroke", "var(--border-color)");
 
             badgeGroup.append("text")
                 .attr("text-anchor", "middle")
                 .attr("y", 0)
-                .attr("fill", "#8b949e")
+                .attr("fill", "var(--text-secondary)")
                 .style("font-size", "9px")
                 .style("font-weight", "600")
                 .style("pointer-events", "none")
@@ -1184,7 +1271,7 @@ function downloadJPG() {
     const ctx = canvas.getContext('2d');
 
     // Remplit le fond avec la couleur "Dark Mode"
-    ctx.fillStyle = '#0f172a';
+    ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--bg-primary').trim() || '#ffffff';
     ctx.fillRect(0, 0, width, height);
 
     // Convertit le SVG en image source via base64
@@ -1207,4 +1294,150 @@ function downloadJPG() {
         a.click();
         document.body.removeChild(a);
     };
+}
+
+// =====================================================================
+// initMap: Initialise la carte Leaflet et la base de données de tuiles
+// =====================================================================
+function initMap() {
+    const mapContainer = document.getElementById('map-container');
+    if (!mapContainer) return;
+
+    // Coordonnées de Toulouse (défaut) [43.6047, 1.4442] avec zoom 6
+    map = L.map('map-container').setView([43.6047, 1.4442], 6);
+
+    const theme = localStorage.getItem('theme') || 'light';
+    updateMapTheme(theme);
+
+    addDummyMarker();
+}
+
+// =====================================================================
+// updateMapTheme: Met à jour les tuiles de la carte (dark/light)
+// =====================================================================
+function updateMapTheme(theme) {
+    if (!map) return;
+    
+    if (currentTileLayer) {
+        map.removeLayer(currentTileLayer);
+    }
+    
+    let tileUrl = 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
+    if (theme === 'dark') {
+        tileUrl = 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
+    }
+    
+    currentTileLayer = L.tileLayer(tileUrl, {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+        subdomains: 'abcd',
+        maxZoom: 20
+    }).addTo(map);
+}
+
+// =====================================================================
+// addDummyMarker: Ajoute un marqueur de test pour prouver que la carte
+// est fonctionnelle
+// =====================================================================
+function addDummyMarker() {
+    if (!map) return;
+    const marker = L.marker([43.6047, 1.4442]).addTo(map);
+    marker.bindPopup("<b>Avion de test</b><br>Prêt à recevoir des données dynamiques.").openPopup();
+}
+
+// =====================================================================
+// renderWiresharkView: Génération dynamique de la vue Packet Inspector
+// =====================================================================
+function renderWiresharkView(messages) {
+    const container = document.getElementById('wireshark-list');
+    if (!container) return;
+
+    container.innerHTML = ''; // Nettoyer la vue précédente
+
+    if (messages.length === 0) {
+        container.innerHTML = '<p style="padding: 1rem; color: var(--text-secondary);">Aucun message à afficher.</p>';
+        return;
+    }
+
+    messages.forEach(msg => {
+        // Niveau 1 : Le message global
+        const msgDetails = document.createElement('details');
+        msgDetails.className = 'ws-msg';
+
+        const msgSummary = document.createElement('summary');
+        msgSummary.className = 'ws-msg-summary';
+        msgSummary.innerHTML = `<span class="ws-time">[${msg.time}]</span> <span class="ws-entities">${msg.srcId} &rarr; ${msg.destId}</span> <span class="ws-summary-text">${msg.summary}</span>`;
+        msgDetails.appendChild(msgSummary);
+
+        const msgContent = document.createElement('div');
+        msgContent.className = 'ws-msg-content';
+
+        // Niveau 2 : Les couches OSI
+        // Couche AVLC
+        if (msg.layers.avlc) {
+            const avlcDetails = document.createElement('details');
+            avlcDetails.className = 'ws-layer ws-layer-avlc';
+            avlcDetails.open = true; // Ouvert par défaut pour voir l'intérieur
+            
+            const avlcSummary = document.createElement('summary');
+            avlcSummary.className = 'ws-layer-summary';
+            avlcSummary.textContent = 'Couche Liaison (AVLC)';
+            avlcDetails.appendChild(avlcSummary);
+
+            const avlcContent = document.createElement('ul');
+            avlcContent.className = 'ws-layer-content';
+            
+            for (const [key, value] of Object.entries(msg.layers.avlc)) {
+                const li = document.createElement('li');
+                li.innerHTML = `<span class="ws-key">${key}</span>: <span class="ws-value">${value}</span>`;
+                avlcContent.appendChild(li);
+            }
+            avlcDetails.appendChild(avlcContent);
+            msgContent.appendChild(avlcDetails);
+        }
+
+        // Couche X.25
+        if (msg.layers.x25) {
+            const x25Details = document.createElement('details');
+            x25Details.className = 'ws-layer ws-layer-x25';
+            x25Details.open = true;
+
+            const x25Summary = document.createElement('summary');
+            x25Summary.className = 'ws-layer-summary';
+            x25Summary.textContent = 'Couche Réseau (X.25)';
+            x25Details.appendChild(x25Summary);
+
+            const x25Content = document.createElement('ul');
+            x25Content.className = 'ws-layer-content';
+
+            for (const [key, value] of Object.entries(msg.layers.x25)) {
+                const li = document.createElement('li');
+                li.innerHTML = `<span class="ws-key">${key}</span>: <span class="ws-value">${value}</span>`;
+                x25Content.appendChild(li);
+            }
+            x25Details.appendChild(x25Content);
+            msgContent.appendChild(x25Details);
+        }
+
+        // Protocole supérieur (IDRP, ACARS, etc.)
+        if (msg.protocolType && msg.protocolType !== "X.25" && msg.protocolType !== "AVLC") {
+            const appDetails = document.createElement('details');
+            appDetails.className = 'ws-layer ws-layer-app';
+            appDetails.open = true;
+
+            const appSummary = document.createElement('summary');
+            appSummary.className = 'ws-layer-summary';
+            appSummary.textContent = `Couche Application (${msg.protocolType})`;
+            appDetails.appendChild(appSummary);
+
+            const appContent = document.createElement('div');
+            appContent.className = 'ws-layer-content ws-payload-text';
+            appContent.textContent = msg.payload; // On affiche le payload brut pour la couche app
+            
+            appDetails.appendChild(appContent);
+            msgContent.appendChild(appDetails);
+        }
+
+        msgDetails.appendChild(msgContent);
+        container.appendChild(msgDetails);
+    });
 }

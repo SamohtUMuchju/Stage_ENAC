@@ -10,6 +10,9 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
+    <!-- Leaflet.js library -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""/>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
     <!-- D3.js library -->
     <script src="https://d3js.org/d3.v7.min.js"></script>
 </head>
@@ -28,11 +31,32 @@
     </div>
 
     <header class="app-header">
-        <h1>VDL2 / ATN Protocol Analyzer</h1>
-        <p>Interactive Sequence Diagram Generator</p>
+        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+            <div>
+                <h1>VDL2 / ATN Protocol Analyzer</h1>
+                <p>Interactive Sequence Diagram Generator</p>
+            </div>
+            <button id="theme-toggle-btn" class="secondary-btn" title="Basculer le thème" style="padding: 0.5rem; border-radius: 50%;">
+                <svg id="theme-icon-moon" class="hidden" viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                </svg>
+                <svg id="theme-icon-sun" viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="5"></circle>
+                    <line x1="12" y1="1" x2="12" y2="3"></line>
+                    <line x1="12" y1="21" x2="12" y2="23"></line>
+                    <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                    <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                    <line x1="1" y1="12" x2="3" y2="12"></line>
+                    <line x1="21" y1="12" x2="23" y2="12"></line>
+                    <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                    <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                </svg>
+            </button>
+        </div>
         <div class="app-tabs">
             <button class="tab-btn active" data-tab="tab-analyzer">Analyseur de Séquence</button>
             <button class="tab-btn" data-tab="tab-anatomy">Anatomie d'une Trame</button>
+            <button class="tab-btn" data-tab="wireshark-container">Packet Inspector</button>
         </div>
     </header>
 
@@ -10042,6 +10066,15 @@ AVLC type: S (Receive Ready) P/F: 1 rseq: 0
                     </svg>
                     JPG
                 </button>
+                <button id="toggle-view-btn" class="secondary-btn" title="Basculer Vue Diagramme / Carte">
+                    <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"></polygon>
+                        <line x1="8" y1="2" x2="8" y2="18"></line>
+                        <line x1="16" y1="6" x2="16" y2="22"></line>
+                    </svg>
+                    Vue Carte
+                </button>
             </div>
             <!-- Filter container -->
             <div id="filter-container" class="hidden">
@@ -10082,6 +10115,7 @@ AVLC type: S (Receive Ready) P/F: 1 rseq: 0
                     <p>Cliquez sur "Analyser" pour générer le diagramme.</p>
                 </div>
             </div>
+            <div id="map-container" class="hidden"></div>
         </section>
     </main>
 
@@ -10119,6 +10153,18 @@ AVLC type: I sseq: 5 rseq: 5 poll: 0
                     <svg viewBox="0 0 24 24" width="48" height="48" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round" style="opacity: 0.5; margin-bottom: 1rem;"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
                     <p>Survolez ou cliquez sur les lignes du log à gauche pour voir l'explication pédagogique détaillée.</p>
                 </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- TAB 3 : Packet Inspector (Vue Wireshark) -->
+    <main class="app-container hidden" id="wireshark-container">
+        <section class="panel">
+            <div class="panel-header">
+                <h2>Packet Inspector (Vue Wireshark)</h2>
+            </div>
+            <div id="wireshark-list" class="wireshark-list">
+                <!-- Les messages seront générés ici -->
             </div>
         </section>
     </main>
