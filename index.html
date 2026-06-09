@@ -10102,20 +10102,33 @@ AVLC type: S (Receive Ready) P/F: 1 rseq: 0
                     </div>
                 </div>
             </div>
-            <div id="diagram-container">
-                <div id="diagram-empty-state">
-                    <svg viewBox="0 0 24 24" width="48" height="48" stroke="currentColor" stroke-width="1.5" fill="none"
-                        stroke-linecap="round" stroke-linejoin="round" style="opacity: 0.5; margin-bottom: 1rem;">
-                        <path
-                            d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z">
-                        </path>
-                        <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
-                        <line x1="12" y1="22.08" x2="12" y2="12"></line>
-                    </svg>
-                    <p>Cliquez sur "Analyser" pour générer le diagramme.</p>
+            <div style="display: flex; flex: 1; overflow: hidden;">
+                <div style="flex: 2; display: flex; flex-direction: column; position: relative; overflow: hidden;">
+                    <div id="diagram-container">
+                        <div id="diagram-empty-state">
+                            <svg viewBox="0 0 24 24" width="48" height="48" stroke="currentColor" stroke-width="1.5" fill="none"
+                                stroke-linecap="round" stroke-linejoin="round" style="opacity: 0.5; margin-bottom: 1rem;">
+                                <path
+                                    d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z">
+                                </path>
+                                <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+                                <line x1="12" y1="22.08" x2="12" y2="12"></line>
+                            </svg>
+                            <p>Cliquez sur "Analyser" pour générer le diagramme.</p>
+                        </div>
+                    </div>
+                    <div id="map-container" class="hidden"></div>
+                </div>
+                <!-- Chat CPDLC Container -->
+                <div id="cpdlc-chat-container" class="hidden">
+                    <div class="chat-header">
+                        Messenger CPDLC
+                    </div>
+                    <div id="cpdlc-chat-messages">
+                        <!-- Messages dynamically inserted here -->
+                    </div>
                 </div>
             </div>
-            <div id="map-container" class="hidden"></div>
         </section>
     </main>
 
@@ -10186,7 +10199,7 @@ AVLC type: I sseq: 5 rseq: 5 poll: 0
         </div>
     </div>
 
-    <script src="app.js"></script>
+    <script type="module" src="app.js"></script>
 </body>
 
 </html>
