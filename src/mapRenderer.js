@@ -62,19 +62,19 @@ export class MapRenderer {
     updateMapTheme(theme) {
         // Sécurité : si la carte n'est pas initialisée, on ne fait rien
         if (!this.map) return;
-        
+
         // Si une couche d'images de fond existe déjà, on la retire avant de mettre la nouvelle
         if (this.currentTileLayer) {
             this.map.removeLayer(this.currentTileLayer);
         }
-        
+
         // URL du fournisseur CartoDB pour une carte très claire, minimaliste, idéale pour faire ressortir les données
         let tileUrl = 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
         if (theme === 'dark') {
             // URL du fournisseur CartoDB pour un fond très sombre ("Dark Matter")
             tileUrl = 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
         }
-        
+
         // Création de la couche d'images via l'API Leaflet
         this.currentTileLayer = L.tileLayer(tileUrl, {
             // Mentions légales obligatoires pour les données cartographiques gratuites
@@ -107,14 +107,15 @@ export class MapRenderer {
         try {
             // On lance une requête HTTP (Fetch) vers l'API publique OpenSky Network.
             // On filtre leur base de données mondiale spécifiquement pour notre identifiant (en minuscules).
-            const response = await fetch(`https://opensky-network.org/api/states/all?icao24=${icao24.toLowerCase()}`);
-            
+            const formattedIcao24 = icao24.toLowerCase();
+            const encodedUrl = encodeURIComponent(`https://opensky-network.org/api/states/all?icao24=${formattedIcao24}`);
+            const response = await fetch(`https://corsproxy.io/?${encodedUrl}`);
             // Si le serveur répond avec une erreur (ex: 404, 429 Too Many Requests, 500)
             if (!response.ok) throw new Error("API Network error");
-            
             // On convertit la réponse textuelle brute en objet JavaScript exploitable
             const data = await response.json();
-            
+
+
             // Si un ancien marqueur d'avion était déjà sur la carte, on le supprime (nettoyage)
             if (this.currentAircraftMarker) {
                 this.map.removeLayer(this.currentAircraftMarker);
@@ -129,7 +130,7 @@ export class MapRenderer {
                 const lon = state[5];
                 const lat = state[6];
                 const alt = state[7] || "Inconnu";
-                
+
                 // Si la latitude et longitude sont valides (parfois l'avion est détecté mais sans position GPS)
                 if (lat && lon) {
                     // Création d'une icône HTML personnalisée (on utilise simplement un gros Emoji Avion)
@@ -139,23 +140,23 @@ export class MapRenderer {
                         iconSize: [24, 24],
                         iconAnchor: [12, 12] // On centre le point d'ancrage visuel au milieu de l'emoji
                     });
-                    
+
                     // On place le nouveau marqueur sur la carte aux bonnes coordonnées
                     this.currentAircraftMarker = L.marker([lat, lon], { icon }).addTo(this.map)
                         // On construit le texte de la pop-up avec l'altitude en mètres
                         .bindPopup(`<b>Vol ${icao24}</b><br>Position en temps réel<br>Alt: ${alt}m`)
                         .openPopup();
-                    
+
                     // On demande à la caméra de la carte de "voler" (ou sauter) jusqu'à cette nouvelle position
                     this.map.setView([lat, lon], 8);
                     return; // Succès complet, on arrête l'exécution ici
                 }
             }
-            
+
             // Si on arrive ici, c'est que l'API a répondu correctement, mais que l'avion n'est pas dans la base
             // (très fréquent : les logs VDL analysés datent de plusieurs mois/années, l'avion n'est plus en vol aujourd'hui).
             showNotification(`Position Live indisponible pour ce vol historique (${icao24}). Affichage démo.`, 'warning');
-            
+
             // Création d'un marqueur de repli (sur Toulouse)
             this.currentAircraftMarker = L.marker([43.6047, 1.4442]).addTo(this.map)
                 .bindPopup(`<b>Vol ${icao24}</b><br>Position historique (Démo: Toulouse)`).openPopup();
@@ -166,10 +167,10 @@ export class MapRenderer {
             console.error("OpenSky API Error:", error);
             // Notification visuelle rouge
             showNotification(`Erreur de connexion OpenSky pour ${icao24}. Affichage démo.`, 'error');
-            
+
             // Nettoyage de l'ancien marqueur
             if (this.currentAircraftMarker) this.map.removeLayer(this.currentAircraftMarker);
-            
+
             // Marqueur de repli sur Toulouse
             this.currentAircraftMarker = L.marker([43.6047, 1.4442]).addTo(this.map)
                 .bindPopup(`<b>Vol ${icao24}</b><br>Position historique (Démo: Toulouse)`).openPopup();

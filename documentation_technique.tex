@@ -1,0 +1,261 @@
+\documentclass[a4paper,11pt]{report}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[french]{babel}
+\usepackage[margin=2.5cm]{geometry}
+\usepackage{graphicx}
+\usepackage{xcolor}
+\usepackage[colorlinks=true, linkcolor=blue!70!black, urlcolor=blue!70!black, citecolor=blue!70!black]{hyperref}
+\usepackage{listings}
+\usepackage{fancyhdr}
+\usepackage{booktabs}
+\usepackage{amsmath}
+\usepackage{titlesec} % Pour le formatage des titres de chapitres
+
+% Formatage des chapitres pour être moins massifs que par défaut
+\titleformat{\chapter}[display]
+  {\normalfont\huge\bfseries}{\chaptertitlename\ \thechapter}{20pt}{\Huge}
+\titlespacing*{\chapter}{0pt}{-20pt}{30pt}
+
+% Configuration des couleurs
+\definecolor{lightgray}{rgb}{0.95, 0.95, 0.95}
+\definecolor{darkgray}{rgb}{0.4, 0.4, 0.4}
+\definecolor{purple}{rgb}{0.65, 0.12, 0.82}
+\definecolor{red}{rgb}{0.8, 0.1, 0.1}
+\definecolor{blue}{rgb}{0.1, 0.1, 0.8}
+\definecolor{enac_blue}{RGB}{0, 75, 140} % Exemple de bleu institutionnel
+
+% Configuration de listings pour JavaScript
+\lstdefinelanguage{JavaScript}{
+  keywords={typeof, new, true, false, catch, function, return, null, switch, var, if, in, while, do, else, case, break, const, let, class, export, import, from, default, constructor},
+  keywordstyle=\color{blue}\bfseries,
+  ndkeywords={boolean, throw, implements, this},
+  ndkeywordstyle=\color{darkgray}\bfseries,
+  identifierstyle=\color{black},
+  sensitive=false,
+  comment=[l]{//},
+  morecomment=[s]{/*}{*/},
+  commentstyle=\color{purple}\ttfamily,
+  stringstyle=\color{red}\ttfamily,
+  morestring=[b]',
+  morestring=[b]"
+}
+
+\lstset{
+   language=JavaScript,
+   backgroundcolor=\color{lightgray},
+   extendedchars=true,
+   basicstyle=\footnotesize\ttfamily,
+   showstringspaces=false,
+   showspaces=false,
+   numbers=left,
+   numberstyle=\footnotesize\color{darkgray},
+   numbersep=9pt,
+   tabsize=2,
+   breaklines=true,
+   showtabs=false,
+   captionpos=b,
+   frame=single,
+   rulecolor=\color{darkgray}
+}
+
+\begin{document}
+
+% --- PAGE DE GARDE (Type Rapport de Stage) ---
+\begin{titlepage}
+    \centering
+    \vspace*{1cm}
+    
+    {\large \textbf{École Nationale de l'Aviation Civile (ENAC)}} \\
+    {\large \textbf{École Nationale Supérieure d'Électrotechnique, d'Électronique, d'Informatique, d'Hydraulique et des Télécommunications (ENSEEIHT)}}
+    
+    \vspace{2cm}
+    
+    {\LARGE \textbf{RAPPORT DE STAGE}}
+    
+    \vspace{1.5cm}
+    
+    \rule{\linewidth}{0.5mm} \\[0.4cm]
+    {\huge \textbf{Conception et Développement d'une SPA de Visualisation et d'Analyse Spatio-Temporelle de Flux de Données VDL Mode 2}} \\
+    \rule{\linewidth}{0.5mm} \\[1cm]
+    
+    \vspace{1.5cm}
+    
+    \begin{minipage}{0.45\textwidth}
+        \begin{flushleft} \large
+            \textbf{Auteur :}\\
+            Thomas \textsc{Maraninchi} \\
+            \textit{Élève-Ingénieur ENSEEIHT}
+        \end{flushleft}
+    \end{minipage}
+    \hfill
+    \begin{minipage}{0.45\textwidth}
+        \begin{flushright} \large
+            \textbf{Tuteur académique :} \\
+            {[}Nom du tuteur ENSEEIHT{]} \\
+            \vspace{0.5cm}
+            \textbf{Maître de stage :} \\
+            {[}Nom du maître de stage ENAC{]} \\
+        \end{flushright}
+    \end{minipage}
+
+    \vfill
+
+    {\large \textbf{Période de stage :}} \\
+    {[}Mois de début{]} 2026 - {[}Mois de fin{]} 2026
+
+    \vspace{1.5cm}
+    
+    \textit{Document technique et guide d'utilisation inclus.}
+    
+    \vspace{1cm}
+\end{titlepage}
+
+% --- REMERCIEMENTS ---
+\chapter*{Remerciements}
+\addcontentsline{toc}{chapter}{Remerciements}
+Je tiens tout d'abord à remercier chaleureusement mon maître de stage, [Nom du maître de stage], pour m'avoir accueilli au sein de l'ENAC et pour son encadrement tout au long de ce projet. Son expertise dans le domaine des télécommunications aéronautiques a été d'une aide précieuse.
+
+Je souhaite également remercier l'équipe pédagogique de l'ENSEEIHT pour la qualité de la formation dispensée, qui m'a permis d'aborder les défis techniques de ce stage avec sérénité.
+
+Enfin, j'adresse mes remerciements à l'ensemble du personnel de l'ENAC pour leur accueil et le cadre de travail exceptionnel qu'ils offrent.
+
+% --- TABLE DES MATIÈRES ---
+\tableofcontents
+\newpage
+
+% --- INTRODUCTION ---
+\chapter*{Introduction Générale}
+\addcontentsline{toc}{chapter}{Introduction Générale}
+
+L'évolution des communications aéronautiques s'inscrit dans une transition majeure, passant de la traditionnelle communication vocale (VHF analogique) vers les communications par liaison de données (Data Link) au sein de l'Aeronautical Telecommunication Network (ATN). Dans ce contexte, le protocole VDL Mode 2 (VHF Data Link Mode 2) joue un rôle central en offrant une bande passante accrue et une fiabilité supérieure pour les échanges entre les aéronefs et le contrôle de la circulation aérienne (ATC).
+
+Le présent rapport synthétise les travaux réalisés lors de mon stage de fin d'études à l'École Nationale de l'Aviation Civile (ENAC). L'objectif de ce stage était de concevoir et de développer un outil pédagogique et technique permettant l'analyse et le débogage de ces flux de données. 
+
+Le résultat de ce travail est une Single Page Application (SPA), entièrement exécutée côté client, conçue pour charger, parser et visualiser de manière interactive des logs textuels radio aéronautiques générés par l'outil \texttt{dumpvdl2}. Outre la restitution visuelle des trames, l'application propose une suite d'outils allant du diagramme de séquence interactif à la cartographie des trajectoires de vol.
+
+Ce document fait donc office de rapport de stage en détaillant les choix d'architecture logicielle, l'implémentation de l'extraction protocolaire, tout en intégrant une documentation technique complète et le guide d'utilisation de la solution livrée.
+
+% --- CHAPITRE 1 : ARCHITECTURE ---
+\chapter{Architecture Logicielle et Flux de Données}
+
+La conception de cette application repose sur une architecture sans backend (SPA Pure), privilégiant l'autonomie et les performances côté navigateur. Ce choix technologique permet de s'affranchir des latences réseau liées à un serveur et simplifie considérablement le déploiement. L'ensemble des modules est développé en JavaScript Vanilla moderne (ES6), garantissant une exécution native rapide sans la surcharge d'un framework externe volumineux.
+
+\section{State Management Centralisé (\texttt{store.js})}
+Afin de garantir l'immuabilité et la réactivité de l'Interface Homme-Machine (IHM), l'application s'appuie sur un système de State Management centralisé implémenté dans le module \texttt{store.js}. Cette approche centralisée permet à chaque composant visuel (\texttt{uiManager.js}, \texttt{mapRenderer.js}, \texttt{chatView.js}, \texttt{diagramRenderer.js}) de réagir de manière prédictible aux mutations de l'état global.
+
+Voici une implémentation type de la méthode de mise à jour de l'état et de notification des abonnés :
+
+\begin{lstlisting}[caption={Implémentation type de la méthode \texttt{setState} et \texttt{subscribe} dans le Store}]
+class Store {
+  constructor(initialState) {
+    this.state = Object.freeze({ ...initialState });
+    this.listeners = [];
+  }
+
+  subscribe(listener) {
+    this.listeners.push(listener);
+    return () => {
+      this.listeners = this.listeners.filter(l => l !== listener);
+    };
+  }
+
+  setState(updater) {
+    const nextState = typeof updater === 'function' ? updater(this.state) : updater;
+    if (nextState !== this.state) {
+      this.state = Object.freeze({ ...this.state, ...nextState });
+      this.listeners.forEach(listener => listener(this.state));
+    }
+  }
+}
+
+export const appStore = new Store({ logs: [], entities: {} });
+\end{lstlisting}
+
+\section{Analyse et Traitement Asynchrone via Web Worker}
+Le traitement de fichiers logs volumineux implique l'application répétée d'expressions régulières complexes pour extraire les métadonnées et le contenu des trames VDL Mode 2. Pour éviter de bloquer ou figer le thread principal de l'UI (Main Thread), cette tâche critique est déléguée au \texttt{ParserService.js}.
+
+Ce service encapsule la communication avec un \texttt{Web Worker} (\texttt{parser.worker.js}) qui s'exécute dans un thread d'arrière-plan. Le Worker lit le fichier par blocs, applique les opérations de parsing (incluant la détection des balises OSI et le décodage hexadécimal) et renvoie les objets de trames structurés au fil de l'eau. Cette architecture asynchrone garantit une fluidité totale de l'IHM, même lors du chargement de fichiers de plusieurs méga-octets par simple opération de Drag \& Drop.
+
+% --- CHAPITRE 2 : ANALYSE PROTOCOLAIRE ---
+\chapter{Extraction Protocolaire et Analyse Automatique des Anomalies}
+
+L'une des forces majeures de l'application développée durant ce stage est sa capacité à ne pas se limiter à un simple affichage, mais à inférer l'état de la liaison de données en analysant les séquences protocolaires et en identifiant les anomalies de transmission.
+
+\section{Couche Liaison (AVLC)}
+Au niveau de la couche liaison de données (Aviation VHF Link Control - AVLC), la fiabilité des échanges est assurée par des mécanismes de fenêtrage glissant. Le parseur effectue un tracking continu des compteurs d'émission \texttt{sseq} (Send Sequence Number) et de réception \texttt{rseq} (Receive Sequence Number), qui sont incrémentés modulo 8.
+Une désynchronisation entre le \texttt{sseq} d'une trame et le \texttt{rseq} de la trame d'acquittement correspondante permet de détecter visuellement et logiquement les pertes de paquets ou les retransmissions initiées par l'expiration du temporisateur T4.
+
+\section{Couche Réseau (X.25)}
+La couche réseau repose sur une déclinaison du protocole X.25, gérant la commutation de circuits virtuels. L'application extrait les identifiants de circuits virtuels logiques (LCI) formés par les champs Groupe (\texttt{grp}) et Canal (\texttt{chan}). 
+En suivant ces circuits virtuels, l'algorithme met en évidence les désynchronisations de paquets de données (Data) et analyse le flux d'acquittements réseau (Receive Ready - RR), signalant ainsi les goulots d'étranglement ou les ruptures de connectivité au niveau de la couche 3.
+
+\section{Mobilité et Handovers}
+Dans un réseau aéronautique, l'aéronef en mouvement passe d'une zone de couverture radio à une autre. Ce processus de transition, appelé handoff ou handover, est vital pour la continuité du Data Link. L'algorithme de détection embarqué identifie automatiquement les changements de stations sol (Ground Stations) communiquant avec un même aéronef. Lors de l'identification d'une nouvelle station maître, l'interface graphique marque cet événement par une ligne de démarcation temporelle spécifique au sein du diagramme de séquence.
+
+% --- CHAPITRE 3 : GUIDE UTILISATEUR ---
+\chapter{Guide de l'Interface Utilisateur et Résultats Visuels}
+
+Cette section détaille les principales vues de l'Interface Homme-Machine (IHM) développée, constituant ainsi le manuel utilisateur du logiciel livré. Des captures d'écran illustrent les fonctionnalités clés du système.
+
+% DIRECTIVE CAPTURE : Figure 1
+% L'image doit montrer : La zone de drag-and-drop estompée, la barre supérieure des filtres d'entités (avions/stations sol) active, mettant en valeur les pastilles colorées (badges de symétrie du trafic radio : vert/orange/rouge) à côté des adresses OACI hexadécimales.
+\begin{figure}[htbp]
+    \centering
+    % \includegraphics[width=\textwidth]{img/dashboard_principal.png}
+    \framebox[\textwidth]{\rule{0pt}{6cm} \textit{Emplacement pour la capture du Tableau de bord principal}}
+    \caption{Tableau de bord principal après chargement d'un fichier log, affichant la barre de filtres et les indicateurs de trafic.}
+    \label{fig:dashboard}
+\end{figure}
+
+% DIRECTIVE CAPTURE : Figure 2
+% L'image doit montrer : Le diagramme de séquence avec ses lignes de vie verticales (Stations sol à gauche, avions à droite), une flèche de message en surbrillance (cas d'une anomalie détectée, ex: retransmission ou handoff avec sa bannière horizontale de handover), le badge "Scénario Pédagogique", et l'info-bulle (tooltip contextuelle) fixée à l'écran détaillant l'anatomie enrichie de la trame décodée.
+\begin{figure}[htbp]
+    \centering
+    % \includegraphics[width=\textwidth]{img/diagramme_sequence.png}
+    \framebox[\textwidth]{\rule{0pt}{6cm} \textit{Emplacement pour la capture du Diagramme de Séquence D3.js}}
+    \caption{Diagramme de séquence interactif mettant en évidence une anomalie de transmission et l'info-bulle détaillée de la trame.}
+    \label{fig:sequence_diagram}
+\end{figure}
+
+% DIRECTIVE CAPTURE : Figure 3
+% L'image doit montrer : La liste hiérarchique utilisant les accordéons natifs <details>. On doit y voir un paquet sélectionné dont les sections "Couche Liaison (AVLC)" et "Couche Réseau (X.25)" sont dépliées, affichant clairement les listes de clés-valeurs techniques (sseq, rseq, LCI, bit More Data).
+\begin{figure}[htbp]
+    \centering
+    % \includegraphics[width=\textwidth]{img/vue_wireshark.png}
+    \framebox[\textwidth]{\rule{0pt}{6cm} \textit{Emplacement pour la capture de la Vue Wireshark}}
+    \caption{Inspecteur de paquets avec architecture en accordéons, détaillant les couches AVLC et X.25.}
+    \label{fig:wireshark_view}
+\end{figure}
+
+% DIRECTIVE CAPTURE : Figure 4
+% L'image doit montrer : L'interface de chat typée messagerie moderne dans l'onglet dédié, avec les bulles de texte asymétriques (gris à gauche pour l'ATC/Sol, bleu/vert à droite pour l'avion/Pilote). Le texte du message doit afficher la traduction humaine avec les placeholders substitués dynamiquement par les vraies valeurs (ex: "CONTACT MARSEILLE 125.200" au lieu de templates bruts), et le pavé ASN.1 technique d'origine replié proprement sous un accordéon discret "Voir la trame brute".
+\begin{figure}[htbp]
+    \centering
+    % \includegraphics[width=\textwidth]{img/chat_cpdlc.png}
+    \framebox[\textwidth]{\rule{0pt}{6cm} \textit{Emplacement pour la capture du Terminal CPDLC}}
+    \caption{Terminal de discussion CPDLC présentant les échanges sous forme de messagerie asymétrique avec traduction dynamique.}
+    \label{fig:chat_cpdlc}
+\end{figure}
+
+% DIRECTIVE CAPTURE : Figure 5
+% L'image doit montrer : La carte Leaflet (en mode sombre ou clair cohérent), affichant le tracé d'une trajectoire historique complète calculée en bleu à partir de l'API OpenSky, ajustée aux limites du tracé via fitBounds, avec un marqueur d'icône d'avion personnalisé positionné au dernier point de contact connu, et un toast de notification de succès en bas à droite de l'écran.
+\begin{figure}[htbp]
+    \centering
+    % \includegraphics[width=\textwidth]{img/carte_leaflet.png}
+    \framebox[\textwidth]{\rule{0pt}{6cm} \textit{Emplacement pour la capture du Module de Cartographie}}
+    \caption{Module de cartographie synchrone affichant l'historique de vol d'un aéronef ciblé via l'API OpenSky.}
+    \label{fig:map_module}
+\end{figure}
+
+% --- CONCLUSION ---
+\chapter*{Conclusion et Perspectives}
+\addcontentsline{toc}{chapter}{Conclusion et Perspectives}
+
+Ce stage au sein de l'ENAC a permis la réalisation d'une application d'analyse de logs VDL Mode 2 moderne, ergonomique et hautement performante. En exploitant pleinement les capacités du navigateur via les Web Workers et une architecture SPA sans backend, l'outil développé garantit une expérience fluide, même lors de l'inspection de fichiers volumineux.
+
+L'intégration d'outils visuels interactifs tels que le diagramme de séquence en D3.js, le terminal CPDLC ou encore la cartographie Leaflet, fait de cette solution un véritable atout pédagogique pour la formation et la recherche autour des protocoles de communication aéronautiques.
+
+Les perspectives d'évolution pour ce projet incluent notamment la gestion en direct (live-streaming) des données via WebSockets directement branchés sur la sortie de \texttt{dumpvdl2}, ainsi que l'enrichissement des algorithmes de détection d'anomalies pour couvrir les protocoles de couches supérieures.
+
+\end{document}

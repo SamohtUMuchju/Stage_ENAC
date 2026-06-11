@@ -726,3 +726,107 @@ function initApp() {
         });
     }
 }
+
+/**
+ * ----------------------------------------------------------------------------
+ * RÉCUPÉRATION ET AFFICHAGE DE L'HISTORIQUE DE VOL (OPENSKY)
+ * ----------------------------------------------------------------------------
+ * Interroge l'API OpenSky pour récupérer et dessiner la trajectoire d'un avion.
+ */
+export async function fetchAndDrawHistoricalFlight(icao24, logDateString) {
+    try {
+        // 1. Formatage des Paramètres
+        const formattedIcao24 = icao24.toLowerCase();
+        
+        // Parse la date et conversion en Timestamp Unix (secondes)
+        const dateObj = new Date(logDateString);
+        if (isNaN(dateObj.getTime())) {
+            showNotification("Date de log invalide", "error");
+            return;
+        }
+        const begin = Math.floor(dateObj.getTime() / 1000);
+        const end = begin + 86400; // Exactement 24 heures plus tard
+
+        // 2. L'Appel API Initial (Recherche du vol)
+        const flightsUrl = `https://opensky-network.org/api/flights/aircraft?icao24=${formattedIcao24}&begin=${begin}&end=${end}`;
+        const flightsResponse = await fetch(flightsUrl);
+        
+        if (!flightsResponse.ok) {
+            if (flightsResponse.status === 404) {
+                showNotification("Aucun historique de vol trouvé sur OpenSky pour cette date.", "warning");
+                return;
+            } else if (flightsResponse.status === 429) {
+                showNotification("Limite de requêtes OpenSky atteinte (HTTP 429).", "error");
+                return;
+            }
+            throw new Error(`Erreur HTTP OpenSky (Flights): ${flightsResponse.status}`);
+        }
+
+        const flights = await flightsResponse.json();
+        
+        // Si le tableau est vide
+        if (!flights || flights.length === 0) {
+            showNotification("Aucun historique de vol trouvé sur OpenSky pour cette date.", "warning");
+            return;
+        }
+
+        // Extraction de firstSeen
+        const firstSeen = flights[0].firstSeen;
+
+        // 3. Le Deuxième Appel API (Récupération de la trajectoire / Track)
+        const trackUrl = `https://opensky-network.org/api/tracks/all?icao24=${formattedIcao24}&time=${firstSeen}`;
+        const trackResponse = await fetch(trackUrl);
+        
+        if (!trackResponse.ok) {
+             if (trackResponse.status === 404) {
+                 showNotification("Aucune trace détaillée (trajectoire) trouvée pour ce vol.", "warning");
+                 return;
+             } else if (trackResponse.status === 429) {
+                 showNotification("Limite de requêtes OpenSky atteinte (HTTP 429).", "error");
+                 return;
+             }
+             throw new Error(`Erreur HTTP OpenSky (Tracks): ${trackResponse.status}`);
+        }
+
+        const trackData = await trackResponse.json();
+        
+        if (!trackData || !trackData.path || trackData.path.length === 0) {
+            showNotification("Trajectoire vide ou invalide retournée par OpenSky.", "warning");
+            return;
+        }
+
+        // 4. Le Rendu Cartographique (Leaflet)
+        const map = mapRenderer.map;
+        if (!map) {
+            console.error("Carte Leaflet non initialisée.");
+            return;
+        }
+
+        // Nettoie la carte Leaflet des anciennes trajectoires
+        map.eachLayer((layer) => {
+            if (layer instanceof L.Polyline || layer instanceof L.Marker) {
+                map.removeLayer(layer);
+            }
+        });
+
+        // Parcourt le tableau path pour extraire les paires [latitude, longitude]
+        // L'API retourne : [time, latitude, longitude, altitude, heading, boolean]
+        const latlngs = trackData.path.map(point => [point[1], point[2]]);
+
+        // Tracer la trajectoire historique de l'avion
+        const polyline = L.polyline(latlngs, {color: '#2E86C1', weight: 3}).addTo(map);
+
+        // Ajuste la vue de la carte automatiquement pour englober toute la trajectoire
+        map.fitBounds(polyline.getBounds());
+
+        // Ajoute un marqueur L.marker au dernier point connu de la trajectoire
+        const lastPoint = latlngs[latlngs.length - 1];
+        L.marker(lastPoint).addTo(map);
+
+        showNotification("Trajectoire historique tracée avec succès !", "success");
+
+    } catch (error) {
+        console.error("Erreur réseau ou API lors de la requête OpenSky:", error);
+        showNotification("Erreur de connexion à l'API OpenSky.", "error");
+    }
+}

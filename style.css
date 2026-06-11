@@ -1,38 +1,53 @@
 :root {
     /* Color Palette - Pastel Light Mode (Low Glare, High Contrast) */
-    --bg-primary: #f1f5f9; /* Slate 100 - Removes blinding white */
-    --bg-secondary: #e2e8f0; /* Slate 200 */
-    --bg-panel: #f8fafc; /* Slate 50 - Very subtle off-white for panels/boxes */
-    --text-primary: #0f172a; /* Slate 900 */
-    --text-secondary: #334155; /* Slate 700 - Darker for better contrast */
-    --text-muted: #64748b; /* Slate 500 */
-    
-    --accent-primary: #2563eb; /* Blue 600 - Deeper */
-    --accent-hover: #1d4ed8; /* Blue 700 */
-    --accent-ground: #059669; /* Emerald 600 */
-    --accent-aircraft: #d97706; /* Amber 600 */
-    
-    --border-color: #94a3b8; /* Slate 400 - Stronger borders for boxes */
+    --bg-primary: #f1f5f9;
+    /* Slate 100 - Removes blinding white */
+    --bg-secondary: #e2e8f0;
+    /* Slate 200 */
+    --bg-panel: #f8fafc;
+    /* Slate 50 - Very subtle off-white for panels/boxes */
+    --text-primary: #0f172a;
+    /* Slate 900 */
+    --text-secondary: #334155;
+    /* Slate 700 - Darker for better contrast */
+    --text-muted: #64748b;
+    /* Slate 500 */
+
+    --accent-primary: #2563eb;
+    /* Blue 600 - Deeper */
+    --accent-hover: #1d4ed8;
+    /* Blue 700 */
+    --accent-ground: #059669;
+    /* Emerald 600 */
+    --accent-aircraft: #d97706;
+    /* Amber 600 */
+
+    --border-color: #94a3b8;
+    /* Slate 400 - Stronger borders for boxes */
     --tooltip-bg: #f8fafc;
-    --terminal-text: #047857; /* Emerald 700 */
+    --terminal-text: #047857;
+    /* Emerald 700 */
     --filter-bg: #e2e8f0;
-    
+
     /* Highlight Colors */
-    --color-error: #dc2626; /* Red 600 */
-    --color-warning: #d97706; /* Amber 600 */
-    --color-success: #059669; /* Emerald 600 */
-    
+    --color-error: #dc2626;
+    /* Red 600 */
+    --color-warning: #d97706;
+    /* Amber 600 */
+    --color-success: #059669;
+    /* Emerald 600 */
+
     /* Overlay and Glass Variables */
     --glass-bg: rgba(0, 0, 0, 0.03);
     --glass-hover: rgba(0, 0, 0, 0.08);
     --glass-border: rgba(0, 0, 0, 0.06);
     --scroll-thumb: rgba(0, 0, 0, 0.15);
     --scroll-thumb-hover: rgba(0, 0, 0, 0.25);
-    
+
     /* Typography */
     --font-main: 'Inter', system-ui, -apple-system, sans-serif;
     --font-mono: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace;
-    
+
     /* Layout */
     --header-height: 80px;
     --panel-gap: 1.5rem;
@@ -43,28 +58,28 @@
 
 [data-theme="dark"] {
     /* Color Palette - Modern Deep Dark Mode */
-    --bg-primary: #0d1117; 
-    --bg-secondary: #0f172a; 
-    --bg-panel: #161b22; 
+    --bg-primary: #0d1117;
+    --bg-secondary: #0f172a;
+    --bg-panel: #161b22;
     --text-primary: #e6edf3;
     --text-secondary: #8b949e;
     --text-muted: #475569;
-    
+
     --accent-primary: #38bdf8;
     --accent-hover: #0ea5e9;
-    --accent-ground: #2f81f7; 
-    --accent-aircraft: #d29922; 
-    
-    --border-color: #30363d; 
+    --accent-ground: #2f81f7;
+    --accent-aircraft: #d29922;
+
+    --border-color: #30363d;
     --tooltip-bg: #0d1117;
     --terminal-text: #a7f3d0;
     --filter-bg: rgba(0, 0, 0, 0.1);
-    
+
     /* Highlight Colors */
     --color-error: #f85149;
     --color-warning: #fb923c;
     --color-success: #10b981;
-    
+
     /* Overlay and Glass Variables */
     --glass-bg: rgba(255, 255, 255, 0.02);
     --glass-hover: rgba(255, 255, 255, 0.06);
@@ -82,7 +97,7 @@
 body {
     font-family: var(--font-main);
     background-color: var(--bg-primary);
-    
+
     color: var(--text-primary);
     min-height: 100vh;
     display: flex;
@@ -271,9 +286,11 @@ textarea#log-input:focus {
     gap: 1rem;
     flex-wrap: wrap;
 }
+
 #filter-container.hidden {
     display: none;
 }
+
 .filter-label {
     font-size: 0.8rem;
     color: var(--text-secondary);
@@ -281,11 +298,13 @@ textarea#log-input:focus {
     text-transform: uppercase;
     letter-spacing: 0.5px;
 }
+
 #entity-filters {
     display: flex;
     flex-wrap: wrap;
     gap: 0.6rem;
 }
+
 .filter-btn {
     background: var(--glass-bg);
     border: 1px solid var(--border-color);
@@ -355,6 +374,7 @@ textarea#log-input:focus {
     gap: 0.8rem;
     align-items: center;
 }
+
 .protocol-cb {
     font-size: 0.8rem;
     color: var(--text-secondary);
@@ -368,10 +388,12 @@ textarea#log-input:focus {
     border: 1px solid var(--border-color);
     transition: all 0.3s;
 }
+
 .protocol-cb:hover {
     background: var(--glass-hover);
     color: var(--text-primary);
 }
+
 .protocol-cb input {
     cursor: pointer;
     accent-color: var(--accent-primary);
@@ -388,20 +410,24 @@ textarea#log-input:focus {
 }
 
 /* Fix Leaflet dark mode popup/controls */
-.leaflet-popup-content-wrapper, .leaflet-popup-tip {
+.leaflet-popup-content-wrapper,
+.leaflet-popup-tip {
     background: var(--bg-panel);
     color: var(--text-primary);
     border: 1px solid var(--border-color);
 }
+
 .leaflet-container .leaflet-control-attribution {
     background: rgba(0, 0, 0, 0.5);
     color: var(--text-secondary);
 }
+
 .leaflet-control-zoom a {
     background-color: var(--bg-panel) !important;
     color: var(--text-primary) !important;
     border-color: var(--border-color) !important;
 }
+
 .leaflet-control-zoom a:hover {
     background-color: var(--bg-secondary) !important;
 }
@@ -671,12 +697,25 @@ svg {
     transform-origin: center;
     animation: broadcast-pulse 2s cubic-bezier(0.2, 0.8, 0.2, 1) infinite;
 }
-.broadcast-wave:nth-child(2) { animation-delay: 0.2s; }
-.broadcast-wave:nth-child(3) { animation-delay: 0.4s; }
+
+.broadcast-wave:nth-child(2) {
+    animation-delay: 0.2s;
+}
+
+.broadcast-wave:nth-child(3) {
+    animation-delay: 0.4s;
+}
 
 @keyframes broadcast-pulse {
-    0%   { opacity: 0.8; transform: scale(0.8); }
-    100% { opacity: 0;   transform: scale(1.5); }
+    0% {
+        opacity: 0.8;
+        transform: scale(0.8);
+    }
+
+    100% {
+        opacity: 0;
+        transform: scale(1.5);
+    }
 }
 
 .broadcast-text {
@@ -720,12 +759,14 @@ svg {
     gap: 0.5rem;
     margin-top: 0.6rem;
 }
+
 .sort-controls label {
     font-size: 0.75rem;
     color: var(--text-secondary);
     font-weight: 600;
     text-transform: uppercase;
 }
+
 .sort-select {
     background: var(--glass-bg);
     color: var(--text-primary);
@@ -738,11 +779,13 @@ svg {
     outline: none;
     transition: all 0.2s;
 }
+
 .sort-select:hover,
 .sort-select:focus {
     border-color: var(--accent-primary);
     background: var(--glass-hover);
 }
+
 .sort-select option {
     background: var(--bg-secondary);
     color: var(--text-primary);
@@ -858,7 +901,8 @@ svg {
     font-weight: 600;
 }
 
-.anatomy-term:hover, .anatomy-term.active {
+.anatomy-term:hover,
+.anatomy-term.active {
     background: rgba(56, 189, 248, 0.15);
     color: var(--text-primary);
 }
@@ -895,7 +939,8 @@ svg {
     left: 0;
     width: 100vw;
     height: 100vh;
-    background-color: rgba(13, 17, 23, 0.90); /* var(--bg-primary) with opacity */
+    background-color: rgba(13, 17, 23, 0.90);
+    /* var(--bg-primary) with opacity */
     backdrop-filter: blur(4px);
     z-index: 9999;
     display: flex;
@@ -918,7 +963,8 @@ svg {
     background: var(--bg-panel);
     transition: all 0.3s ease;
     color: var(--text-primary);
-    pointer-events: none; /* Prevents flickering during drag */
+    pointer-events: none;
+    /* Prevents flickering during drag */
 }
 
 .drop-zone-content p {
@@ -964,12 +1010,13 @@ svg {
     justify-content: space-between;
     align-items: center;
     background: var(--bg-panel);
-    list-style: none; /* Hide default arrow */
+    list-style: none;
+    /* Hide default arrow */
     border-bottom: 1px solid transparent;
     transition: background 0.2s;
 }
 
-.ws-msg[open] > .ws-msg-summary {
+.ws-msg[open]>.ws-msg-summary {
     border-bottom-color: var(--border-color);
 }
 
@@ -998,7 +1045,7 @@ svg {
     text-align: center;
 }
 
-.ws-msg[open] > .ws-msg-summary .ws-summary-left::before {
+.ws-msg[open]>.ws-msg-summary .ws-summary-left::before {
     content: '-';
 }
 
@@ -1047,9 +1094,17 @@ svg {
 }
 
 /* Couleurs protocolaires (WireShark style) */
-.ws-layer-avlc { border-left-color: #3b82f6; }
-.ws-layer-x25  { border-left-color: #10b981; }
-.ws-layer-app  { border-left-color: #8b5cf6; }
+.ws-layer-avlc {
+    border-left-color: #3b82f6;
+}
+
+.ws-layer-x25 {
+    border-left-color: #10b981;
+}
+
+.ws-layer-app {
+    border-left-color: #8b5cf6;
+}
 
 .ws-layer-summary {
     cursor: pointer;
@@ -1077,7 +1132,7 @@ svg {
     color: var(--text-secondary);
 }
 
-.ws-layer[open] > .ws-layer-summary::before {
+.ws-layer[open]>.ws-layer-summary::before {
     content: '-';
 }
 
@@ -1157,42 +1212,49 @@ svg {
     border-radius: 12px;
     font-size: 0.85rem;
     position: relative;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
     color: #e6edf3;
 }
+
 .chat-message-ground {
     align-self: flex-start;
     background-color: #30363d;
     border-bottom-left-radius: 0;
 }
+
 .chat-message-aircraft {
     align-self: flex-end;
-    background-color: #0e3f68; /* bleu aéronautique */
+    background-color: #0e3f68;
+    /* bleu aéronautique */
     border-bottom-right-radius: 0;
 }
+
 .chat-time {
     font-size: 0.7rem;
     opacity: 0.7;
     margin-bottom: 0.4rem;
     display: block;
 }
+
 .chat-translation {
     font-weight: 600;
     margin-bottom: 0.4rem;
     font-size: 0.95rem;
     color: #a7f3d0;
 }
+
 .chat-raw {
     font-family: var(--font-mono);
     font-size: 0.75rem;
     opacity: 0.8;
     white-space: pre-wrap;
     word-break: break-all;
-    background: rgba(0,0,0,0.15);
+    background: rgba(0, 0, 0, 0.15);
     padding: 0.5rem;
     border-radius: 6px;
     line-height: 1.4;
 }
+
 .chat-ref {
     position: absolute;
     top: 0.8rem;
@@ -1200,7 +1262,49 @@ svg {
     font-size: 0.7rem;
     font-family: var(--font-mono);
     opacity: 0.5;
-    background: rgba(255,255,255,0.1);
+    background: rgba(255, 255, 255, 0.1);
     padding: 0.1rem 0.4rem;
     border-radius: 4px;
+}
+
+/* Style du bouton de réduction */
+#cpdlc-collapse-btn {
+    width: 100%;
+    padding: 8px;
+    background-color: var(--bg-secondary);
+    color: var(--text-primary);
+    border: none;
+    border-bottom: 1px solid var(--border-color);
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 0.85rem;
+    transition: all 0.2s;
+    border-radius: 8px 8px 0 0;
+}
+
+#cpdlc-collapse-btn:hover {
+    background-color: var(--glass-hover);
+}
+
+/* 
+ * LA MAGIE DU TOGGLE :
+ */
+#cpdlc-chat-container.collapsed {
+    flex: 0 0 auto !important;
+    min-width: 0 !important;
+    width: auto !important;
+    background: transparent !important;
+    border: none !important;
+    align-self: flex-start; /* Empêche le conteneur de s'étirer jusqu'en bas */
+}
+
+#cpdlc-chat-container.collapsed #cpdlc-collapse-btn {
+    border-radius: 8px; /* Arrondit tous les coins quand replié */
+    border: 1px solid var(--border-color);
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+}
+
+#cpdlc-chat-container.collapsed #cpdlc-chat-messages,
+#cpdlc-chat-container.collapsed .chat-header {
+    display: none !important;
 }
